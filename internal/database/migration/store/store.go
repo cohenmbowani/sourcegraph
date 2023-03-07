@@ -567,6 +567,7 @@ func (s *Store) AutoUpgrade(ctx context.Context) (currentVersion string, enabled
 	if err != nil {
 		return "", false, err
 	}
+	defer func() { _ = rows.Close() }()
 	if !rows.Next() {
 		return "", false, nil
 	}
@@ -575,7 +576,5 @@ func (s *Store) AutoUpgrade(ctx context.Context) (currentVersion string, enabled
 	if err != nil {
 		return "", false, err
 	}
-	_ = rows.Close()
-
 	return currentVersion, enabled, nil
 }

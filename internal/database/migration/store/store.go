@@ -559,3 +559,23 @@ func isMissingRelation(err error) bool {
 
 	return pgErr.Code == "42P01"
 }
+
+func (s *Store) AutoUpgrade(ctx context.Context) (currentVersion string, enabled bool, err error) {
+	// NOTE: It is safe to assume false if there is no value returned or error
+	// accessing the value.
+	rows, err := s.Query(ctx, sqlf.Sprintf(`SELECT version, auto_upgrade FROM versions WHERE service = 'frontend'`))
+	if err != nil {
+		return "", false, err
+	}
+	if !rows.Next() {
+		return "", false, nil
+	}
+
+	err = rows.Scan(&currentVersion, &enabled)
+	if err != nil {
+		return "", false, err
+	}
+	_ = rows.Close()
+
+	return currentVersion, enabled, nil
+}

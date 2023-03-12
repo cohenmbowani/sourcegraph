@@ -21,6 +21,15 @@ import { Container, H3, LoadingSpinner, PageHeader, Text, useObservable } from '
 import { PageTitle } from '../components/PageTitle'
 import { eventLogger } from '../tracking/eventLogger'
 
+// This seems to be necessary to have properly rounded corners on
+// the right side.
+const theme = EditorView.theme({
+    '.cm-scroller': {
+        borderTopRightRadius: 'var(--border-radius)',
+        borderBottomRightRadius: 'var(--border-radius)',
+    },
+})
+
 interface Props {}
 
 /**
@@ -51,14 +60,7 @@ export const SiteAdminPingsPage: React.FunctionComponent<React.PropsWithChildren
                 json(),
                 foldGutter(),
                 editorHeight({ height: '300px' }),
-                // This seems to be necessary to have properly rounded corners on
-                // the right side.
-                EditorView.theme({
-                    '.cm-scroller': {
-                        borderTopRightRadius: 'var(--border-radius)',
-                        borderBottomRightRadius: 'var(--border-radius)',
-                    },
-                }),
+                theme,
                 defaultEditorTheme,
                 jsonHighlighting,
                 search({ top: true }),

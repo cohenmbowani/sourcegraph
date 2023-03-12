@@ -143,9 +143,10 @@ const staticExtensions: Extension = [
         },
         '.selected-line': {
             backgroundColor: 'var(--code-selection-bg)',
-        },
-        '.selected-line:focus': {
-            boxShadow: 'none',
+
+            '&:focus': {
+                boxShadow: 'none',
+            },
         },
         '.highlighted-line': {
             backgroundColor: 'var(--code-selection-bg)',

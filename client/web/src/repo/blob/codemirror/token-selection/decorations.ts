@@ -40,6 +40,12 @@ function addOrReplace(decorations: DecorationItem[], item: DecorationItem): Deco
     return decorations
 }
 
+const theme = EditorView.theme({
+    '.cm-token-selection-definition-ready': {
+        textDecoration: 'underline',
+    },
+})
+
 /**
  * Extension providing decorations for focused, hovered, pinned occurrences, and document highlights.
  * We combine all of these into a single extension to avoid the focused element blur caused by its removal from the DOM.
@@ -129,10 +135,6 @@ export function interactiveOccurrencesExtension(): Extension {
                 return Decoration.set(sortByFromPosition(ranges))
             }
         ),
-        EditorView.theme({
-            '.cm-token-selection-definition-ready': {
-                textDecoration: 'underline',
-            },
-        }),
+        theme,
     ]
 }

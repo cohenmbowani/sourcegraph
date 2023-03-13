@@ -1,4 +1,4 @@
-import React, { FunctionComponent, useMemo, useState } from 'react'
+import React, { FunctionComponent, useEffect, useMemo, useState } from 'react'
 
 import {
     mdiOpenInNew,
@@ -12,13 +12,15 @@ import classNames from 'classnames'
 import { parseISO } from 'date-fns'
 import formatDistance from 'date-fns/formatDistance'
 import {
+    SetAutoUpgradeResult,
+    SetAutoUpgradeVariables,
     SiteUpdateCheckResult,
     SiteUpdateCheckVariables,
     SiteUpgradeReadinessResult,
     SiteUpgradeReadinessVariables,
 } from 'src/graphql-operations'
 
-import { useQuery } from '@sourcegraph/http-client'
+import { useQuery, useMutation } from '@sourcegraph/http-client'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
 import {
     LoadingSpinner,
@@ -41,7 +43,7 @@ import {
 import { LogOutput } from '../components/LogOutput'
 import { PageTitle } from '../components/PageTitle'
 
-import { SITE_UPDATE_CHECK, SITE_UPGRADE_READINESS } from './backend'
+import { SITE_UPDATE_CHECK, SITE_UPGRADE_READINESS, SET_AUTO_UPGRADE } from './backend'
 
 import styles from './SiteAdminUpdatesPage.module.scss'
 
@@ -132,6 +134,14 @@ const SiteUpgradeReadiness: FunctionComponent = () => {
         SITE_UPGRADE_READINESS,
         {}
     )
+    const [setAutoUpgrade] = useMutation<SetAutoUpgradeResult, SetAutoUpgradeVariables>(SET_AUTO_UPGRADE)
+    useEffect(() => {
+        if (data) {
+            setAutoUpgrade({
+                variables: { ready: Boolean(!data?.site.upgradeReadiness.schemaDrift.length) },
+            })
+        }
+    }, [data, setAutoUpgrade])
     const [isExpanded, setIsExpanded] = useState(false)
     return (
         <>

@@ -80,7 +80,7 @@ func Upgrade(
 		fromStr := fromFlag.Get(cmd)
 		toStr := toFlag.Get(cmd)
 
-		currentVersion, autoUpgrade, err := store.AutoUpgrade(ctx)
+		currentVersion, autoUpgrade, err := store.GetAutoUpgrade(ctx)
 		if err != nil {
 			return errors.Wrap(err, "check auto upgrade")
 		} else if autoUpgrade {

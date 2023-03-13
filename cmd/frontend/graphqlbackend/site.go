@@ -3,6 +3,7 @@ package graphqlbackend
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -360,4 +361,18 @@ func (r *upgradeReadinessResolver) RequiredOutOfBandMigrations(ctx context.Conte
 		}
 	}
 	return requiredMigrations, nil
+}
+
+func (r *schemaResolver) SetAutoUpgrade(ctx context.Context, args *struct {
+	Ready bool
+}) (*EmptyResponse, error) {
+	// 🚨 SECURITY: Only site admins can set auto_upgrade readiness
+	if err := auth.CheckCurrentUserIsSiteAdmin(ctx, r.db); err != nil {
+		return &EmptyResponse{}, err
+	}
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf("UPDATE versions SET auto_upgrade = %v", args.Ready))
+	if err != nil {
+		return &EmptyResponse{}, err
+	}
+	return &EmptyResponse{}, nil
 }

@@ -29,9 +29,15 @@ type MockStore struct {
 	// DownFunc is an instance of a mock function object controlling the
 	// behavior of the method Down.
 	DownFunc *StoreDownFunc
+	// GetAutoUpgradeFunc is an instance of a mock function object
+	// controlling the behavior of the method GetAutoUpgrade.
+	GetAutoUpgradeFunc *StoreGetAutoUpgradeFunc
 	// IndexStatusFunc is an instance of a mock function object controlling
 	// the behavior of the method IndexStatus.
 	IndexStatusFunc *StoreIndexStatusFunc
+	// SetAutoUpgradeFunc is an instance of a mock function object
+	// controlling the behavior of the method SetAutoUpgrade.
+	SetAutoUpgradeFunc *StoreSetAutoUpgradeFunc
 	// TransactFunc is an instance of a mock function object controlling the
 	// behavior of the method Transact.
 	TransactFunc *StoreTransactFunc
@@ -68,8 +74,18 @@ func NewMockStore() *MockStore {
 				return
 			},
 		},
+		GetAutoUpgradeFunc: &StoreGetAutoUpgradeFunc{
+			defaultHook: func(context.Context) (r0 string, r1 bool, r2 error) {
+				return
+			},
+		},
 		IndexStatusFunc: &StoreIndexStatusFunc{
 			defaultHook: func(context.Context, string, string) (r0 shared.IndexStatus, r1 bool, r2 error) {
+				return
+			},
+		},
+		SetAutoUpgradeFunc: &StoreSetAutoUpgradeFunc{
+			defaultHook: func(context.Context, bool) (r0 error) {
 				return
 			},
 		},
@@ -120,9 +136,19 @@ func NewStrictMockStore() *MockStore {
 				panic("unexpected invocation of MockStore.Down")
 			},
 		},
+		GetAutoUpgradeFunc: &StoreGetAutoUpgradeFunc{
+			defaultHook: func(context.Context) (string, bool, error) {
+				panic("unexpected invocation of MockStore.GetAutoUpgrade")
+			},
+		},
 		IndexStatusFunc: &StoreIndexStatusFunc{
 			defaultHook: func(context.Context, string, string) (shared.IndexStatus, bool, error) {
 				panic("unexpected invocation of MockStore.IndexStatus")
+			},
+		},
+		SetAutoUpgradeFunc: &StoreSetAutoUpgradeFunc{
+			defaultHook: func(context.Context, bool) error {
+				panic("unexpected invocation of MockStore.SetAutoUpgrade")
 			},
 		},
 		TransactFunc: &StoreTransactFunc{
@@ -165,6 +191,9 @@ func NewMockStoreFrom(i Store) *MockStore {
 		},
 		DownFunc: &StoreDownFunc{
 			defaultHook: i.Down,
+		},
+		GetAutoUpgradeFunc: &StoreGetAutoUpgradeFunc{
+			defaultHook: i.GetAutoUpgrade,
 		},
 		IndexStatusFunc: &StoreIndexStatusFunc{
 			defaultHook: i.IndexStatus,
@@ -496,6 +525,114 @@ func (c StoreDownFuncCall) Results() []interface{} {
 	return []interface{}{c.Result0}
 }
 
+// StoreGetAutoUpgradeFunc describes the behavior when the GetAutoUpgrade
+// method of the parent MockStore instance is invoked.
+type StoreGetAutoUpgradeFunc struct {
+	defaultHook func(context.Context) (string, bool, error)
+	hooks       []func(context.Context) (string, bool, error)
+	history     []StoreGetAutoUpgradeFuncCall
+	mutex       sync.Mutex
+}
+
+// GetAutoUpgrade delegates to the next hook function in the queue and
+// stores the parameter and result values of this invocation.
+func (m *MockStore) GetAutoUpgrade(v0 context.Context) (string, bool, error) {
+	r0, r1, r2 := m.GetAutoUpgradeFunc.nextHook()(v0)
+	m.GetAutoUpgradeFunc.appendCall(StoreGetAutoUpgradeFuncCall{v0, r0, r1, r2})
+	return r0, r1, r2
+}
+
+// SetDefaultHook sets function that is called when the GetAutoUpgrade
+// method of the parent MockStore instance is invoked and the hook queue is
+// empty.
+func (f *StoreGetAutoUpgradeFunc) SetDefaultHook(hook func(context.Context) (string, bool, error)) {
+	f.defaultHook = hook
+}
+
+// PushHook adds a function to the end of hook queue. Each invocation of the
+// GetAutoUpgrade method of the parent MockStore instance invokes the hook
+// at the front of the queue and discards it. After the queue is empty, the
+// default hook function is invoked for any future action.
+func (f *StoreGetAutoUpgradeFunc) PushHook(hook func(context.Context) (string, bool, error)) {
+	f.mutex.Lock()
+	f.hooks = append(f.hooks, hook)
+	f.mutex.Unlock()
+}
+
+// SetDefaultReturn calls SetDefaultHook with a function that returns the
+// given values.
+func (f *StoreGetAutoUpgradeFunc) SetDefaultReturn(r0 string, r1 bool, r2 error) {
+	f.SetDefaultHook(func(context.Context) (string, bool, error) {
+		return r0, r1, r2
+	})
+}
+
+// PushReturn calls PushHook with a function that returns the given values.
+func (f *StoreGetAutoUpgradeFunc) PushReturn(r0 string, r1 bool, r2 error) {
+	f.PushHook(func(context.Context) (string, bool, error) {
+		return r0, r1, r2
+	})
+}
+
+func (f *StoreGetAutoUpgradeFunc) nextHook() func(context.Context) (string, bool, error) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	if len(f.hooks) == 0 {
+		return f.defaultHook
+	}
+
+	hook := f.hooks[0]
+	f.hooks = f.hooks[1:]
+	return hook
+}
+
+func (f *StoreGetAutoUpgradeFunc) appendCall(r0 StoreGetAutoUpgradeFuncCall) {
+	f.mutex.Lock()
+	f.history = append(f.history, r0)
+	f.mutex.Unlock()
+}
+
+// History returns a sequence of StoreGetAutoUpgradeFuncCall objects
+// describing the invocations of this function.
+func (f *StoreGetAutoUpgradeFunc) History() []StoreGetAutoUpgradeFuncCall {
+	f.mutex.Lock()
+	history := make([]StoreGetAutoUpgradeFuncCall, len(f.history))
+	copy(history, f.history)
+	f.mutex.Unlock()
+
+	return history
+}
+
+// StoreGetAutoUpgradeFuncCall is an object that describes an invocation of
+// method GetAutoUpgrade on an instance of MockStore.
+type StoreGetAutoUpgradeFuncCall struct {
+	// Arg0 is the value of the 1st argument passed to this method
+	// invocation.
+	Arg0 context.Context
+	// Result0 is the value of the 1st result returned from this method
+	// invocation.
+	Result0 string
+	// Result1 is the value of the 2nd result returned from this method
+	// invocation.
+	Result1 bool
+	// Result2 is the value of the 3rd result returned from this method
+	// invocation.
+	Result2 error
+}
+
+// Args returns an interface slice containing the arguments of this
+// invocation.
+func (c StoreGetAutoUpgradeFuncCall) Args() []interface{} {
+	return []interface{}{c.Arg0}
+}
+
+// Results returns an interface slice containing the results of this
+// invocation.
+func (c StoreGetAutoUpgradeFuncCall) Results() []interface{} {
+	return []interface{}{c.Result0, c.Result1, c.Result2}
+}
+
 // StoreIndexStatusFunc describes the behavior when the IndexStatus method
 // of the parent MockStore instance is invoked.
 type StoreIndexStatusFunc struct {
@@ -607,6 +744,111 @@ func (c StoreIndexStatusFuncCall) Args() []interface{} {
 // invocation.
 func (c StoreIndexStatusFuncCall) Results() []interface{} {
 	return []interface{}{c.Result0, c.Result1, c.Result2}
+}
+
+// StoreSetAutoUpgradeFunc describes the behavior when the SetAutoUpgrade
+// method of the parent MockStore instance is invoked.
+type StoreSetAutoUpgradeFunc struct {
+	defaultHook func(context.Context, bool) error
+	hooks       []func(context.Context, bool) error
+	history     []StoreSetAutoUpgradeFuncCall
+	mutex       sync.Mutex
+}
+
+// SetAutoUpgrade delegates to the next hook function in the queue and
+// stores the parameter and result values of this invocation.
+func (m *MockStore) SetAutoUpgrade(v0 context.Context, v1 bool) error {
+	r0 := m.SetAutoUpgradeFunc.nextHook()(v0, v1)
+	m.SetAutoUpgradeFunc.appendCall(StoreSetAutoUpgradeFuncCall{v0, v1, r0})
+	return r0
+}
+
+// SetDefaultHook sets function that is called when the SetAutoUpgrade
+// method of the parent MockStore instance is invoked and the hook queue is
+// empty.
+func (f *StoreSetAutoUpgradeFunc) SetDefaultHook(hook func(context.Context, bool) error) {
+	f.defaultHook = hook
+}
+
+// PushHook adds a function to the end of hook queue. Each invocation of the
+// SetAutoUpgrade method of the parent MockStore instance invokes the hook
+// at the front of the queue and discards it. After the queue is empty, the
+// default hook function is invoked for any future action.
+func (f *StoreSetAutoUpgradeFunc) PushHook(hook func(context.Context, bool) error) {
+	f.mutex.Lock()
+	f.hooks = append(f.hooks, hook)
+	f.mutex.Unlock()
+}
+
+// SetDefaultReturn calls SetDefaultHook with a function that returns the
+// given values.
+func (f *StoreSetAutoUpgradeFunc) SetDefaultReturn(r0 error) {
+	f.SetDefaultHook(func(context.Context, bool) error {
+		return r0
+	})
+}
+
+// PushReturn calls PushHook with a function that returns the given values.
+func (f *StoreSetAutoUpgradeFunc) PushReturn(r0 error) {
+	f.PushHook(func(context.Context, bool) error {
+		return r0
+	})
+}
+
+func (f *StoreSetAutoUpgradeFunc) nextHook() func(context.Context, bool) error {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	if len(f.hooks) == 0 {
+		return f.defaultHook
+	}
+
+	hook := f.hooks[0]
+	f.hooks = f.hooks[1:]
+	return hook
+}
+
+func (f *StoreSetAutoUpgradeFunc) appendCall(r0 StoreSetAutoUpgradeFuncCall) {
+	f.mutex.Lock()
+	f.history = append(f.history, r0)
+	f.mutex.Unlock()
+}
+
+// History returns a sequence of StoreSetAutoUpgradeFuncCall objects
+// describing the invocations of this function.
+func (f *StoreSetAutoUpgradeFunc) History() []StoreSetAutoUpgradeFuncCall {
+	f.mutex.Lock()
+	history := make([]StoreSetAutoUpgradeFuncCall, len(f.history))
+	copy(history, f.history)
+	f.mutex.Unlock()
+
+	return history
+}
+
+// StoreSetAutoUpgradeFuncCall is an object that describes an invocation of
+// method SetAutoUpgrade on an instance of MockStore.
+type StoreSetAutoUpgradeFuncCall struct {
+	// Arg0 is the value of the 1st argument passed to this method
+	// invocation.
+	Arg0 context.Context
+	// Arg1 is the value of the 2nd argument passed to this method
+	// invocation.
+	Arg1 bool
+	// Result0 is the value of the 1st result returned from this method
+	// invocation.
+	Result0 error
+}
+
+// Args returns an interface slice containing the arguments of this
+// invocation.
+func (c StoreSetAutoUpgradeFuncCall) Args() []interface{} {
+	return []interface{}{c.Arg0, c.Arg1}
+}
+
+// Results returns an interface slice containing the results of this
+// invocation.
+func (c StoreSetAutoUpgradeFuncCall) Results() []interface{} {
+	return []interface{}{c.Result0}
 }
 
 // StoreTransactFunc describes the behavior when the Transact method of the

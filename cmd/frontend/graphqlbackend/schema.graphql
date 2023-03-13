@@ -77,6 +77,13 @@ A mutation.
 """
 type Mutation {
     """
+    INTERNAL ONLY: Sets the value of versions.auto_upgrade in the frontend db.
+    Determines behavior of multiversion upgrades.
+
+    Only site admins may perform this mutation.
+    """
+    setAutoUpgrade(ready: Boolean!): EmptyResponse!
+    """
     Updates the user profile information for the user with the given ID.
 
     Only the user and site admins may perform this mutation.

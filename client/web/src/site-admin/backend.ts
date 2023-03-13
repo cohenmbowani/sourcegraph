@@ -36,6 +36,8 @@ import {
     ScheduleRepositoryPermissionsSyncVariables,
     SetUserIsSiteAdminResult,
     SetUserIsSiteAdminVariables,
+    SetAutoUpgradeResult,
+    SetAutoUpgradeVariables,
     SiteAdminAccessTokenConnectionFields,
     SiteAdminAccessTokensResult,
     SiteAdminAccessTokensVariables,
@@ -631,6 +633,14 @@ export const SITE_UPGRADE_READINESS = gql`
                     description
                 }
             }
+        }
+    }
+`
+
+export const SET_AUTO_UPGRADE = gql`
+    mutation SetAutoUpgrade($ready: Boolean!) {
+        setAutoUpgrade(ready: $ready) {
+            alwaysNil
         }
     }
 `

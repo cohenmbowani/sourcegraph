@@ -19,5 +19,5 @@ type Store interface {
 	WithMigrationLog(ctx context.Context, definition definition.Definition, up bool, f func() error) error
 	IndexStatus(ctx context.Context, tableName, indexName string) (shared.IndexStatus, bool, error)
 	Describe(ctx context.Context) (map[string]schemas.SchemaDescription, error)
-	AutoUpgrade(ctx context.Context) (currentVersion string, enabled bool, _ error)
+	GetAutoUpgrade(ctx context.Context) (currentVersion string, enabled bool, _ error)
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/sourcegraph/log/logtest"
 
+	rankingshared "github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/ranking/internal/shared"
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/shared/types"
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/uploads/shared"
 	"github.com/sourcegraph/sourcegraph/internal/api"
@@ -144,7 +145,7 @@ func TestInsertPathRanks(t *testing.T) {
 	}
 
 	// Test InsertPathCountInputs
-	if _, _, err := store.InsertPathCountInputs(ctx, mockRankingGraphKey+"-123", 1000); err != nil {
+	if _, _, err := store.InsertPathCountInputs(ctx, rankingshared.NewDerivativeGraphKeyKey(mockRankingGraphKey, "", 123), 1000); err != nil {
 		t.Fatalf("unexpected error inserting path count inputs: %s", err)
 	}
 
@@ -154,17 +155,17 @@ func TestInsertPathRanks(t *testing.T) {
 	}
 
 	// Finally! Test InsertPathRanks
-	numPathRanksInserted, numInputsProcessed, err := store.InsertPathRanks(ctx, mockRankingGraphKey+"-123", 10)
+	numPathRanksInserted, numInputsProcessed, err := store.InsertPathRanks(ctx, rankingshared.NewDerivativeGraphKeyKey(mockRankingGraphKey, "", 123), 10)
 	if err != nil {
 		t.Fatalf("unexpected error inserting path ranks: %s", err)
 	}
 
 	if numPathRanksInserted != 2 {
-		t.Fatalf("unexpected number of path ranks inserted. want=%d have=%f", 2, numPathRanksInserted)
+		t.Fatalf("unexpected number of path ranks inserted. want=%d have=%d", 2, numPathRanksInserted)
 	}
 
 	if numInputsProcessed != 1 {
-		t.Fatalf("unexpected number of inputs processed. want=%d have=%f", 1, numInputsProcessed)
+		t.Fatalf("unexpected number of inputs processed. want=%d have=%d", 1, numInputsProcessed)
 	}
 }
 
@@ -258,7 +259,7 @@ func TestInsertPathCountInputs(t *testing.T) {
 	}
 
 	// Test InsertPathCountInputs: should process existing rows
-	if _, _, err := store.InsertPathCountInputs(ctx, mockRankingGraphKey+"-123", 1000); err != nil {
+	if _, _, err := store.InsertPathCountInputs(ctx, rankingshared.NewDerivativeGraphKeyKey(mockRankingGraphKey, "", 123), 1000); err != nil {
 		t.Fatalf("unexpected error inserting path count inputs: %s", err)
 	}
 
@@ -277,7 +278,7 @@ func TestInsertPathCountInputs(t *testing.T) {
 	}
 
 	// Test InsertPathCountInputs: should process unprocessed rows only
-	if _, _, err := store.InsertPathCountInputs(ctx, mockRankingGraphKey+"-123", 1000); err != nil {
+	if _, _, err := store.InsertPathCountInputs(ctx, rankingshared.NewDerivativeGraphKeyKey(mockRankingGraphKey, "", 123), 1000); err != nil {
 		t.Fatalf("unexpected error inserting path count inputs: %s", err)
 	}
 
@@ -298,7 +299,7 @@ func TestInsertPathCountInputs(t *testing.T) {
 	}
 
 	// Test InsertPathCountInputs: should do nothing, 94 covers the same project as 93
-	if _, _, err := store.InsertPathCountInputs(ctx, mockRankingGraphKey+"-123", 1000); err != nil {
+	if _, _, err := store.InsertPathCountInputs(ctx, rankingshared.NewDerivativeGraphKeyKey(mockRankingGraphKey, "", 123), 1000); err != nil {
 		t.Fatalf("unexpected error inserting path count inputs: %s", err)
 	}
 
@@ -378,13 +379,19 @@ func TestVacuumStaleDefinitionsAndReferences(t *testing.T) {
 	// make upload 2 visible at tip (1 and 3 are not)
 	insertVisibleAtTip(t, db, 50, 2)
 
-	// remove definitions and references for non-visible uploads
-	numStaleDefinitionRecordsDeleted, numStaleReferenceRecordsDeleted, err := store.VacuumStaleDefinitionsAndReferences(ctx, mockRankingGraphKey)
+	// remove definitions for non-visible uploads
+	_, numStaleDefinitionRecordsDeleted, err := store.VacuumStaleDefinitions(ctx, mockRankingGraphKey)
 	if err != nil {
-		t.Fatalf("unexpected error vacuuming stale definitions and references: %s", err)
+		t.Fatalf("unexpected error vacuuming stale definitions: %s", err)
 	}
 	if expected := 3; numStaleDefinitionRecordsDeleted != expected {
 		t.Fatalf("unexpected number of definition records deleted. want=%d have=%d", expected, numStaleDefinitionRecordsDeleted)
+	}
+
+	// remove references for non-visible uploads
+	_, numStaleReferenceRecordsDeleted, err := store.VacuumStaleReferences(ctx, mockRankingGraphKey)
+	if err != nil {
+		t.Fatalf("unexpected error vacuuming stale eferences: %s", err)
 	}
 	if expected := 4; numStaleReferenceRecordsDeleted != expected {
 		t.Fatalf("unexpected number of reference records deleted. want=%d have=%d", expected, numStaleReferenceRecordsDeleted)
@@ -415,7 +422,11 @@ func TestVacuumStaleGraphs(t *testing.T) {
 		}
 	}
 
-	for _, graphKey := range []string{mockRankingGraphKey + "-123", mockRankingGraphKey + "-456", mockRankingGraphKey + "-789"} {
+	for _, graphKey := range []string{
+		rankingshared.NewDerivativeGraphKeyKey(mockRankingGraphKey, "", 123),
+		rankingshared.NewDerivativeGraphKeyKey(mockRankingGraphKey, "", 456),
+		rankingshared.NewDerivativeGraphKeyKey(mockRankingGraphKey, "", 789),
+	} {
 		if _, err := db.ExecContext(ctx, `
 			INSERT INTO codeintel_ranking_references_processed (graph_key, codeintel_ranking_reference_id)
 			SELECT $1, id FROM codeintel_ranking_references
@@ -454,7 +465,7 @@ func TestVacuumStaleGraphs(t *testing.T) {
 	assertCounts(3*7, 3*30)
 
 	// remove records associated with other ranking keys
-	metadataRecordsDeleted, inputRecordsDeleted, err := store.VacuumStaleGraphs(ctx, mockRankingGraphKey+"-456")
+	metadataRecordsDeleted, inputRecordsDeleted, err := store.VacuumStaleGraphs(ctx, rankingshared.NewDerivativeGraphKeyKey(mockRankingGraphKey, "", 456))
 	if err != nil {
 		t.Fatalf("unexpected error vacuuming stale graphs: %s", err)
 	}
@@ -481,14 +492,14 @@ func TestVacuumStaleRanks(t *testing.T) {
 	}
 
 	for r, key := range map[string]string{
-		"foo1": mockRankingGraphKey + "-123",
-		"foo2": mockRankingGraphKey + "-123",
-		"foo3": mockRankingGraphKey + "-123",
-		"foo4": mockRankingGraphKey + "-123",
-		"foo5": mockRankingGraphKey + "-123",
-		"bar":  mockRankingGraphKey + "-234",
-		"baz":  mockRankingGraphKey + "-345",
-		"bonk": mockRankingGraphKey + "-456",
+		"foo1": rankingshared.NewDerivativeGraphKeyKey(mockRankingGraphKey, "", 123),
+		"foo2": rankingshared.NewDerivativeGraphKeyKey(mockRankingGraphKey, "", 123),
+		"foo3": rankingshared.NewDerivativeGraphKeyKey(mockRankingGraphKey, "", 123),
+		"foo4": rankingshared.NewDerivativeGraphKeyKey(mockRankingGraphKey, "", 123),
+		"foo5": rankingshared.NewDerivativeGraphKeyKey(mockRankingGraphKey, "", 123),
+		"bar":  rankingshared.NewDerivativeGraphKeyKey(mockRankingGraphKey, "", 234),
+		"baz":  rankingshared.NewDerivativeGraphKeyKey(mockRankingGraphKey, "", 345),
+		"bonk": rankingshared.NewDerivativeGraphKeyKey(mockRankingGraphKey, "", 456),
 	} {
 		if err := store.setDocumentRanks(ctx, api.RepoName(r), nil, key); err != nil {
 			t.Fatalf("failed to insert document ranks: %s", err)
@@ -517,7 +528,7 @@ func TestVacuumStaleRanks(t *testing.T) {
 	assertNames([]string{"bar", "baz", "bonk", "foo1", "foo2", "foo3", "foo4", "foo5"})
 
 	// remove sufficiently stale records associated with other ranking keys
-	rankRecordsDeleted, err := store.VacuumStaleRanks(ctx, mockRankingGraphKey+"-456")
+	_, rankRecordsDeleted, err := store.VacuumStaleRanks(ctx, rankingshared.NewDerivativeGraphKeyKey(mockRankingGraphKey, "", 456))
 	if err != nil {
 		t.Fatalf("unexpected error vacuuming stale ranks: %s", err)
 	}

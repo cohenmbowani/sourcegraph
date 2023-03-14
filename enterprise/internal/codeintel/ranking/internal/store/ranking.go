@@ -2,13 +2,13 @@ package store
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/keegancsmith/sqlf"
 	"github.com/lib/pq"
 	otlog "github.com/opentracing/opentracing-go/log"
 
+	rankingshared "github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/ranking/internal/shared"
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/uploads/shared"
 	"github.com/sourcegraph/sourcegraph/internal/database/basestore"
 	"github.com/sourcegraph/sourcegraph/internal/database/batch"
@@ -163,21 +163,19 @@ func (s *store) InsertPathCountInputs(
 	ctx, _, endObservation := s.operations.insertPathCountInputs.With(ctx, &err, observation.Args{})
 	defer endObservation(1, observation.Args{})
 
-	parts := strings.Split(derivativeGraphKey, "-")
-	if len(parts) < 2 {
-		return 0, 0, errors.Newf("unexpected graph key format %q", derivativeGraphKey)
+	graphKey, ok := rankingshared.GraphKeyFromDerivativeGraphKey(derivativeGraphKey)
+	if !ok {
+		return 0, 0, errors.Newf("unexpected derivative graph key %q", derivativeGraphKey)
 	}
-	// Remove last segment, which indicates the current time bucket
-	parentGraphKey := strings.Join(parts[:len(parts)-1], "-")
 
 	rows, err := s.db.Query(ctx, sqlf.Sprintf(
 		insertPathCountInputsQuery,
-		parentGraphKey,
+		graphKey,
 		derivativeGraphKey,
 		batchSize,
 		derivativeGraphKey,
 		derivativeGraphKey,
-		parentGraphKey,
+		graphKey,
 		derivativeGraphKey,
 	))
 	if err != nil {
@@ -241,7 +239,8 @@ processable_symbols AS (
 				rrp.graph_key = %s AND
 				u.repository_id = u2.repository_id AND
 				u.root = u2.root AND
-				u.indexer = u2.indexer
+				u.indexer = u2.indexer AND
+				u.id != u2.id
 		) AND
 		-- For multiple references for the same repository/root/indexer in THIS batch, we want to
 		-- process the one associated with the most recently processed upload record. This should
@@ -294,7 +293,7 @@ func (s *store) InsertPathRanks(
 	ctx context.Context,
 	derivativeGraphKey string,
 	batchSize int,
-) (numPathRanksInserted float64, numInputsProcessed float64, err error) {
+) (numPathRanksInserted int, numInputsProcessed int, err error) {
 	ctx, _, endObservation := s.operations.insertPathRanks.With(
 		ctx,
 		&err,
@@ -304,9 +303,9 @@ func (s *store) InsertPathRanks(
 	)
 	defer endObservation(1, observation.Args{})
 
-	// Unused, but here for validation
-	if parts := strings.Split(derivativeGraphKey, "-"); len(parts) < 2 {
-		return 0, 0, errors.Newf("unexpected graph key format %q", derivativeGraphKey)
+	_, ok := rankingshared.GraphKeyFromDerivativeGraphKey(derivativeGraphKey)
+	if !ok {
+		return 0, 0, errors.Newf("unexpected derivative graph key %q", derivativeGraphKey)
 	}
 
 	rows, err := s.db.Query(ctx, sqlf.Sprintf(
@@ -340,12 +339,16 @@ input_ranks AS (
 		pci.document_path AS path,
 		pci.count
 	FROM codeintel_ranking_path_counts_inputs pci
-	JOIN repo r ON r.id = pci.repository_id
 	WHERE
 		pci.graph_key = %s AND
 		NOT pci.processed AND
-		r.deleted_at IS NULL AND
-		r.blocked IS NULL
+		EXISTS (
+			SELECT 1 FROM repo r
+			WHERE
+				r.id = pci.repository_id AND
+				r.deleted_at IS NULL AND
+				r.blocked IS NULL
+		)
 	ORDER BY pci.graph_key, pci.repository_id, pci.id
 	LIMIT %s
 	FOR UPDATE SKIP LOCKED
@@ -397,22 +400,21 @@ SELECT
 `
 
 // TODO - configure via envvar
-const vacuumBatchSize = 1000
+const vacuumBatchSize = 100
 
 // TODO - configure via envvar
 var threshold = time.Duration(1) * time.Hour
 
-func (s *store) VacuumStaleDefinitionsAndReferences(ctx context.Context, graphKey string) (
+func (s *store) VacuumStaleDefinitions(ctx context.Context, graphKey string) (
+	numDefinitionRecordsScanned int,
 	numStaleDefinitionRecordsDeleted int,
-	numStaleReferenceRecordsDeleted int,
 	err error,
 ) {
-	ctx, _, endObservation := s.operations.vacuumStaleDefinitionsAndReferences.With(ctx, &err, observation.Args{LogFields: []otlog.Field{}})
+	ctx, _, endObservation := s.operations.vacuumStaleDefinitions.With(ctx, &err, observation.Args{LogFields: []otlog.Field{}})
 	defer endObservation(1, observation.Args{})
 
 	rows, err := s.db.Query(ctx, sqlf.Sprintf(
-		vacuumStaleDefinitionsAndReferencesQuery,
-		graphKey, int(threshold/time.Hour), vacuumBatchSize,
+		vacuumStaleDefinitionsQuery,
 		graphKey, int(threshold/time.Hour), vacuumBatchSize,
 	))
 	if err != nil {
@@ -422,17 +424,17 @@ func (s *store) VacuumStaleDefinitionsAndReferences(ctx context.Context, graphKe
 
 	for rows.Next() {
 		if err := rows.Scan(
+			&numDefinitionRecordsScanned,
 			&numStaleDefinitionRecordsDeleted,
-			&numStaleReferenceRecordsDeleted,
 		); err != nil {
 			return 0, 0, err
 		}
 	}
 
-	return numStaleDefinitionRecordsDeleted, numStaleReferenceRecordsDeleted, nil
+	return numDefinitionRecordsScanned, numStaleDefinitionRecordsDeleted, nil
 }
 
-const vacuumStaleDefinitionsAndReferencesQuery = `
+const vacuumStaleDefinitionsQuery = `
 WITH
 locked_definitions AS (
 	SELECT
@@ -456,7 +458,43 @@ deleted_definitions AS (
 	DELETE FROM codeintel_ranking_definitions
 	WHERE id IN (SELECT ld.id FROM locked_definitions ld WHERE NOT ld.safe)
 	RETURNING 1
-),
+)
+SELECT
+	(SELECT COUNT(*) FROM locked_definitions),
+	(SELECT COUNT(*) FROM deleted_definitions)
+`
+
+func (s *store) VacuumStaleReferences(ctx context.Context, graphKey string) (
+	numReferenceRecordsScanned int,
+	numStaleReferenceRecordsDeleted int,
+	err error,
+) {
+	ctx, _, endObservation := s.operations.vacuumStaleReferences.With(ctx, &err, observation.Args{LogFields: []otlog.Field{}})
+	defer endObservation(1, observation.Args{})
+
+	rows, err := s.db.Query(ctx, sqlf.Sprintf(
+		vacuumStaleReferencesQuery,
+		graphKey, int(threshold/time.Hour), vacuumBatchSize,
+	))
+	if err != nil {
+		return 0, 0, err
+	}
+	defer func() { err = basestore.CloseRows(rows, err) }()
+
+	for rows.Next() {
+		if err := rows.Scan(
+			&numReferenceRecordsScanned,
+			&numStaleReferenceRecordsDeleted,
+		); err != nil {
+			return 0, 0, err
+		}
+	}
+
+	return numReferenceRecordsScanned, numStaleReferenceRecordsDeleted, nil
+}
+
+const vacuumStaleReferencesQuery = `
+WITH
 locked_references AS (
 	SELECT
 		rr.id,
@@ -481,7 +519,7 @@ deleted_references AS (
 	RETURNING 1
 )
 SELECT
-	(SELECT COUNT(*) FROM deleted_definitions),
+	(SELECT COUNT(*) FROM locked_references),
 	(SELECT COUNT(*) FROM deleted_references)
 `
 
@@ -542,24 +580,30 @@ SELECT
 	(SELECT COUNT(*) FROM deleted_path_counts_inputs)
 `
 
-func (s *store) VacuumStaleRanks(ctx context.Context, derivativeGraphKey string) (rankRecordsSDeleted int, err error) {
+func (s *store) VacuumStaleRanks(ctx context.Context, derivativeGraphKey string) (rankRecordsDeleted, rankRecordsScanned int, err error) {
 	ctx, _, endObservation := s.operations.vacuumStaleRanks.With(ctx, &err, observation.Args{LogFields: []otlog.Field{}})
 	defer endObservation(1, observation.Args{})
 
-	parts := strings.Split(derivativeGraphKey, "-")
-	if len(parts) < 2 {
-		return 0, errors.Newf("unexpected graph key format %q", derivativeGraphKey)
+	graphKey, ok := rankingshared.GraphKeyFromDerivativeGraphKey(derivativeGraphKey)
+	if !ok {
+		return 0, 0, errors.Newf("unexpected derivative graph key %q", derivativeGraphKey)
 	}
-	// Remove last segment, which indicates the current time bucket
-	parentGraphKey := strings.Join(parts[:len(parts)-1], "-")
 
-	count, _, err := basestore.ScanFirstInt(s.db.Query(ctx, sqlf.Sprintf(
+	rows, err := s.db.Query(ctx, sqlf.Sprintf(
 		vacuumStaleRanksQuery,
 		derivativeGraphKey,
-		parentGraphKey,
+		graphKey,
 		derivativeGraphKey,
-	)))
-	return count, err
+	))
+	defer func() { err = basestore.CloseRows(rows, err) }()
+
+	for rows.Next() {
+		if err := rows.Scan(&rankRecordsScanned, &rankRecordsDeleted); err != nil {
+			return 0, 0, err
+		}
+	}
+
+	return rankRecordsScanned, rankRecordsDeleted, nil
 }
 
 const vacuumStaleRanksQuery = `
@@ -568,7 +612,7 @@ matching_graph_keys AS (
 	SELECT DISTINCT graph_key
 	FROM codeintel_path_ranks
 	-- Implicit delete anything with a different graph key root
-	WHERE graph_key != %s AND graph_key LIKE %s || '-%%'
+	WHERE graph_key != %s AND graph_key LIKE %s || '.%%'
 ),
 valid_graph_keys AS (
 	-- Select the current graph key as well as the highest graph key that
@@ -601,5 +645,7 @@ del AS (
 	WHERE repository_id IN (SELECT repository_id FROM locked_records)
 	RETURNING 1
 )
-SELECT COUNT(*) FROM del
+SELECT
+	(SELECT COUNT(*) FROM locked_records),
+	(SELECT COUNT(*) FROM del)
 `

@@ -5732,10 +5732,17 @@ type MockAzureDevOpsClient struct {
 	// object controlling the behavior of the method
 	// ListAuthorizedUserOrganizations.
 	ListAuthorizedUserOrganizationsFunc *AzureDevOpsClientListAuthorizedUserOrganizationsFunc
+	// ListAuthorizedUserProjectsFunc is an instance of a mock function
+	// object controlling the behavior of the method
+	// ListAuthorizedUserProjects.
+	ListAuthorizedUserProjectsFunc *AzureDevOpsClientListAuthorizedUserProjectsFunc
 	// ListRepositoriesByProjectOrOrgFunc is an instance of a mock function
 	// object controlling the behavior of the method
 	// ListRepositoriesByProjectOrOrg.
 	ListRepositoriesByProjectOrOrgFunc *AzureDevOpsClientListRepositoriesByProjectOrOrgFunc
+	// SetWaitForRateLimitFunc is an instance of a mock function object
+	// controlling the behavior of the method SetWaitForRateLimit.
+	SetWaitForRateLimitFunc *AzureDevOpsClientSetWaitForRateLimitFunc
 	// UpdatePullRequestFunc is an instance of a mock function object
 	// controlling the behavior of the method UpdatePullRequest.
 	UpdatePullRequestFunc *AzureDevOpsClientUpdatePullRequestFunc
@@ -5823,8 +5830,18 @@ func NewMockAzureDevOpsClient() *MockAzureDevOpsClient {
 				return
 			},
 		},
+		ListAuthorizedUserProjectsFunc: &AzureDevOpsClientListAuthorizedUserProjectsFunc{
+			defaultHook: func(context.Context, string) (r0 []azuredevops.Project, r1 error) {
+				return
+			},
+		},
 		ListRepositoriesByProjectOrOrgFunc: &AzureDevOpsClientListRepositoriesByProjectOrOrgFunc{
 			defaultHook: func(context.Context, azuredevops.ListRepositoriesByProjectOrOrgArgs) (r0 []azuredevops.Repository, r1 error) {
+				return
+			},
+		},
+		SetWaitForRateLimitFunc: &AzureDevOpsClientSetWaitForRateLimitFunc{
+			defaultHook: func(bool) {
 				return
 			},
 		},
@@ -5920,9 +5937,19 @@ func NewStrictMockAzureDevOpsClient() *MockAzureDevOpsClient {
 				panic("unexpected invocation of MockAzureDevOpsClient.ListAuthorizedUserOrganizations")
 			},
 		},
+		ListAuthorizedUserProjectsFunc: &AzureDevOpsClientListAuthorizedUserProjectsFunc{
+			defaultHook: func(context.Context, string) ([]azuredevops.Project, error) {
+				panic("unexpected invocation of MockAzureDevOpsClient.ListAuthorizedUserProjects")
+			},
+		},
 		ListRepositoriesByProjectOrOrgFunc: &AzureDevOpsClientListRepositoriesByProjectOrOrgFunc{
 			defaultHook: func(context.Context, azuredevops.ListRepositoriesByProjectOrOrgArgs) ([]azuredevops.Repository, error) {
 				panic("unexpected invocation of MockAzureDevOpsClient.ListRepositoriesByProjectOrOrg")
+			},
+		},
+		SetWaitForRateLimitFunc: &AzureDevOpsClientSetWaitForRateLimitFunc{
+			defaultHook: func(bool) {
+				panic("unexpected invocation of MockAzureDevOpsClient.SetWaitForRateLimit")
 			},
 		},
 		UpdatePullRequestFunc: &AzureDevOpsClientUpdatePullRequestFunc{
@@ -5988,8 +6015,14 @@ func NewMockAzureDevOpsClientFrom(i azuredevops.Client) *MockAzureDevOpsClient {
 		ListAuthorizedUserOrganizationsFunc: &AzureDevOpsClientListAuthorizedUserOrganizationsFunc{
 			defaultHook: i.ListAuthorizedUserOrganizations,
 		},
+		ListAuthorizedUserProjectsFunc: &AzureDevOpsClientListAuthorizedUserProjectsFunc{
+			defaultHook: i.ListAuthorizedUserProjects,
+		},
 		ListRepositoriesByProjectOrOrgFunc: &AzureDevOpsClientListRepositoriesByProjectOrOrgFunc{
 			defaultHook: i.ListRepositoriesByProjectOrOrg,
+		},
+		SetWaitForRateLimitFunc: &AzureDevOpsClientSetWaitForRateLimitFunc{
+			defaultHook: i.SetWaitForRateLimit,
 		},
 		UpdatePullRequestFunc: &AzureDevOpsClientUpdatePullRequestFunc{
 			defaultHook: i.UpdatePullRequest,
@@ -7651,6 +7684,118 @@ func (c AzureDevOpsClientListAuthorizedUserOrganizationsFuncCall) Results() []in
 	return []interface{}{c.Result0, c.Result1}
 }
 
+// AzureDevOpsClientListAuthorizedUserProjectsFunc describes the behavior
+// when the ListAuthorizedUserProjects method of the parent
+// MockAzureDevOpsClient instance is invoked.
+type AzureDevOpsClientListAuthorizedUserProjectsFunc struct {
+	defaultHook func(context.Context, string) ([]azuredevops.Project, error)
+	hooks       []func(context.Context, string) ([]azuredevops.Project, error)
+	history     []AzureDevOpsClientListAuthorizedUserProjectsFuncCall
+	mutex       sync.Mutex
+}
+
+// ListAuthorizedUserProjects delegates to the next hook function in the
+// queue and stores the parameter and result values of this invocation.
+func (m *MockAzureDevOpsClient) ListAuthorizedUserProjects(v0 context.Context, v1 string) ([]azuredevops.Project, error) {
+	r0, r1 := m.ListAuthorizedUserProjectsFunc.nextHook()(v0, v1)
+	m.ListAuthorizedUserProjectsFunc.appendCall(AzureDevOpsClientListAuthorizedUserProjectsFuncCall{v0, v1, r0, r1})
+	return r0, r1
+}
+
+// SetDefaultHook sets function that is called when the
+// ListAuthorizedUserProjects method of the parent MockAzureDevOpsClient
+// instance is invoked and the hook queue is empty.
+func (f *AzureDevOpsClientListAuthorizedUserProjectsFunc) SetDefaultHook(hook func(context.Context, string) ([]azuredevops.Project, error)) {
+	f.defaultHook = hook
+}
+
+// PushHook adds a function to the end of hook queue. Each invocation of the
+// ListAuthorizedUserProjects method of the parent MockAzureDevOpsClient
+// instance invokes the hook at the front of the queue and discards it.
+// After the queue is empty, the default hook function is invoked for any
+// future action.
+func (f *AzureDevOpsClientListAuthorizedUserProjectsFunc) PushHook(hook func(context.Context, string) ([]azuredevops.Project, error)) {
+	f.mutex.Lock()
+	f.hooks = append(f.hooks, hook)
+	f.mutex.Unlock()
+}
+
+// SetDefaultReturn calls SetDefaultHook with a function that returns the
+// given values.
+func (f *AzureDevOpsClientListAuthorizedUserProjectsFunc) SetDefaultReturn(r0 []azuredevops.Project, r1 error) {
+	f.SetDefaultHook(func(context.Context, string) ([]azuredevops.Project, error) {
+		return r0, r1
+	})
+}
+
+// PushReturn calls PushHook with a function that returns the given values.
+func (f *AzureDevOpsClientListAuthorizedUserProjectsFunc) PushReturn(r0 []azuredevops.Project, r1 error) {
+	f.PushHook(func(context.Context, string) ([]azuredevops.Project, error) {
+		return r0, r1
+	})
+}
+
+func (f *AzureDevOpsClientListAuthorizedUserProjectsFunc) nextHook() func(context.Context, string) ([]azuredevops.Project, error) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	if len(f.hooks) == 0 {
+		return f.defaultHook
+	}
+
+	hook := f.hooks[0]
+	f.hooks = f.hooks[1:]
+	return hook
+}
+
+func (f *AzureDevOpsClientListAuthorizedUserProjectsFunc) appendCall(r0 AzureDevOpsClientListAuthorizedUserProjectsFuncCall) {
+	f.mutex.Lock()
+	f.history = append(f.history, r0)
+	f.mutex.Unlock()
+}
+
+// History returns a sequence of
+// AzureDevOpsClientListAuthorizedUserProjectsFuncCall objects describing
+// the invocations of this function.
+func (f *AzureDevOpsClientListAuthorizedUserProjectsFunc) History() []AzureDevOpsClientListAuthorizedUserProjectsFuncCall {
+	f.mutex.Lock()
+	history := make([]AzureDevOpsClientListAuthorizedUserProjectsFuncCall, len(f.history))
+	copy(history, f.history)
+	f.mutex.Unlock()
+
+	return history
+}
+
+// AzureDevOpsClientListAuthorizedUserProjectsFuncCall is an object that
+// describes an invocation of method ListAuthorizedUserProjects on an
+// instance of MockAzureDevOpsClient.
+type AzureDevOpsClientListAuthorizedUserProjectsFuncCall struct {
+	// Arg0 is the value of the 1st argument passed to this method
+	// invocation.
+	Arg0 context.Context
+	// Arg1 is the value of the 2nd argument passed to this method
+	// invocation.
+	Arg1 string
+	// Result0 is the value of the 1st result returned from this method
+	// invocation.
+	Result0 []azuredevops.Project
+	// Result1 is the value of the 2nd result returned from this method
+	// invocation.
+	Result1 error
+}
+
+// Args returns an interface slice containing the arguments of this
+// invocation.
+func (c AzureDevOpsClientListAuthorizedUserProjectsFuncCall) Args() []interface{} {
+	return []interface{}{c.Arg0, c.Arg1}
+}
+
+// Results returns an interface slice containing the results of this
+// invocation.
+func (c AzureDevOpsClientListAuthorizedUserProjectsFuncCall) Results() []interface{} {
+	return []interface{}{c.Result0, c.Result1}
+}
+
 // AzureDevOpsClientListRepositoriesByProjectOrOrgFunc describes the
 // behavior when the ListRepositoriesByProjectOrOrg method of the parent
 // MockAzureDevOpsClient instance is invoked.
@@ -7761,6 +7906,109 @@ func (c AzureDevOpsClientListRepositoriesByProjectOrOrgFuncCall) Args() []interf
 // invocation.
 func (c AzureDevOpsClientListRepositoriesByProjectOrOrgFuncCall) Results() []interface{} {
 	return []interface{}{c.Result0, c.Result1}
+}
+
+// AzureDevOpsClientSetWaitForRateLimitFunc describes the behavior when the
+// SetWaitForRateLimit method of the parent MockAzureDevOpsClient instance
+// is invoked.
+type AzureDevOpsClientSetWaitForRateLimitFunc struct {
+	defaultHook func(bool)
+	hooks       []func(bool)
+	history     []AzureDevOpsClientSetWaitForRateLimitFuncCall
+	mutex       sync.Mutex
+}
+
+// SetWaitForRateLimit delegates to the next hook function in the queue and
+// stores the parameter and result values of this invocation.
+func (m *MockAzureDevOpsClient) SetWaitForRateLimit(v0 bool) {
+	m.SetWaitForRateLimitFunc.nextHook()(v0)
+	m.SetWaitForRateLimitFunc.appendCall(AzureDevOpsClientSetWaitForRateLimitFuncCall{v0})
+	return
+}
+
+// SetDefaultHook sets function that is called when the SetWaitForRateLimit
+// method of the parent MockAzureDevOpsClient instance is invoked and the
+// hook queue is empty.
+func (f *AzureDevOpsClientSetWaitForRateLimitFunc) SetDefaultHook(hook func(bool)) {
+	f.defaultHook = hook
+}
+
+// PushHook adds a function to the end of hook queue. Each invocation of the
+// SetWaitForRateLimit method of the parent MockAzureDevOpsClient instance
+// invokes the hook at the front of the queue and discards it. After the
+// queue is empty, the default hook function is invoked for any future
+// action.
+func (f *AzureDevOpsClientSetWaitForRateLimitFunc) PushHook(hook func(bool)) {
+	f.mutex.Lock()
+	f.hooks = append(f.hooks, hook)
+	f.mutex.Unlock()
+}
+
+// SetDefaultReturn calls SetDefaultHook with a function that returns the
+// given values.
+func (f *AzureDevOpsClientSetWaitForRateLimitFunc) SetDefaultReturn() {
+	f.SetDefaultHook(func(bool) {
+		return
+	})
+}
+
+// PushReturn calls PushHook with a function that returns the given values.
+func (f *AzureDevOpsClientSetWaitForRateLimitFunc) PushReturn() {
+	f.PushHook(func(bool) {
+		return
+	})
+}
+
+func (f *AzureDevOpsClientSetWaitForRateLimitFunc) nextHook() func(bool) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	if len(f.hooks) == 0 {
+		return f.defaultHook
+	}
+
+	hook := f.hooks[0]
+	f.hooks = f.hooks[1:]
+	return hook
+}
+
+func (f *AzureDevOpsClientSetWaitForRateLimitFunc) appendCall(r0 AzureDevOpsClientSetWaitForRateLimitFuncCall) {
+	f.mutex.Lock()
+	f.history = append(f.history, r0)
+	f.mutex.Unlock()
+}
+
+// History returns a sequence of
+// AzureDevOpsClientSetWaitForRateLimitFuncCall objects describing the
+// invocations of this function.
+func (f *AzureDevOpsClientSetWaitForRateLimitFunc) History() []AzureDevOpsClientSetWaitForRateLimitFuncCall {
+	f.mutex.Lock()
+	history := make([]AzureDevOpsClientSetWaitForRateLimitFuncCall, len(f.history))
+	copy(history, f.history)
+	f.mutex.Unlock()
+
+	return history
+}
+
+// AzureDevOpsClientSetWaitForRateLimitFuncCall is an object that describes
+// an invocation of method SetWaitForRateLimit on an instance of
+// MockAzureDevOpsClient.
+type AzureDevOpsClientSetWaitForRateLimitFuncCall struct {
+	// Arg0 is the value of the 1st argument passed to this method
+	// invocation.
+	Arg0 bool
+}
+
+// Args returns an interface slice containing the arguments of this
+// invocation.
+func (c AzureDevOpsClientSetWaitForRateLimitFuncCall) Args() []interface{} {
+	return []interface{}{c.Arg0}
+}
+
+// Results returns an interface slice containing the results of this
+// invocation.
+func (c AzureDevOpsClientSetWaitForRateLimitFuncCall) Results() []interface{} {
+	return []interface{}{}
 }
 
 // AzureDevOpsClientUpdatePullRequestFunc describes the behavior when the

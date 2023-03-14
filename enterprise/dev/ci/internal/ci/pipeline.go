@@ -90,7 +90,8 @@ func GeneratePipeline(c Config) (*bk.Pipeline, error) {
 	// PERF: Try to order steps such that slower steps are first.
 	switch c.RunType {
 	case runtype.BazelExpBranch:
-		ops.Merge(BazelOperations())
+		// false means not optional, so this build will fail if Bazel build doesn't pass.
+		ops.Merge(BazelOperations(false))
 	case runtype.WolfiExpBranch:
 		if c.Diff.Has(changed.WolfiPackages) {
 			ops.Merge(WolfiPackagesOperations(c.ChangedFiles[changed.WolfiPackages]))
@@ -114,7 +115,12 @@ func GeneratePipeline(c Config) (*bk.Pipeline, error) {
 			// TODO: (@umpox, @valerybugakov) Figure out if we can reliably enable this in PRs.
 			ClientLintOnlyChangedFiles: false,
 			CreateBundleSizeDiff:       true,
+			ForceBazel:                 c.MessageFlags.ForceBazel,
 		}))
+
+		// At this stage, we don't break builds because of a Bazel failure.
+		// TODO(JH) Disabled until re-enabled with flag
+		// ops.Merge(BazelOperations(true))
 
 		// Now we set up conditional operations that only apply to pull requests.
 		if c.Diff.Has(changed.Client) {
@@ -193,9 +199,11 @@ func GeneratePipeline(c Config) (*bk.Pipeline, error) {
 			addVsceTests,
 		)
 
-	case runtype.AppSnapshotRelease:
-		// If this is an App snapshot build, release a snapshot.
-		ops = operations.NewSet(addAppSnapshotReleaseSteps(c))
+	case runtype.AppRelease:
+		ops = operations.NewSet(addAppReleaseSteps(c, false))
+
+	case runtype.AppInsiders:
+		ops = operations.NewSet(addAppReleaseSteps(c, true))
 
 	case runtype.ImagePatch:
 		// only build image for the specified image in the branch name
@@ -270,6 +278,10 @@ func GeneratePipeline(c Config) (*bk.Pipeline, error) {
 		ops.Merge(operations.NewNamedSet(operations.PipelineSetupSetName,
 			triggerAsync(buildOptions)))
 
+		// At this stage, we don't break builds because of a Bazel failure.
+		// TODO(JH) disabled until I re-enable this with a flag
+		// ops.Merge(BazelOperations(true))
+
 		// Slow image builds
 		imageBuildOps := operations.NewNamedSet("Image builds")
 		for _, dockerImage := range images.SourcegraphDockerImages {
@@ -304,6 +316,8 @@ func GeneratePipeline(c Config) (*bk.Pipeline, error) {
 			MinimumUpgradeableVersion: minimumUpgradeableVersion,
 			ForceReadyForReview:       c.MessageFlags.ForceReadyForReview,
 			CacheBundleSize:           c.RunType.Is(runtype.MainBranch, runtype.MainDryRun),
+			// Do not enable this on main
+			// ForceBazel:                c.MessageFlags.ForceBazel,
 		}))
 
 		// Integration tests

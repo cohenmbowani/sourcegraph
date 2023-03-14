@@ -4,6 +4,7 @@
 # Build syntect_server statically #
 ###################################
 
+# Keep Rust version in sync with WORKSPACE file
 FROM rust:1.67.1-alpine3.17@sha256:8269a16b3eaf33893cc00ea0650b4a4e8323f9a459ce0b527b630310dafbf6ee as ss
 RUN apk add --no-cache musl-dev>=1.1.24-r10 build-base
 COPY . /repo
@@ -44,6 +45,9 @@ RUN go build -o /http-server-stabilizer .
 FROM sourcegraph/alpine-3.14:201280_2023-02-23_4.5-1071f8b97a60@sha256:c4970b21169db155c1b497740e622adb23007ac11a87ec571d9ecef8aba0adc5
 COPY --from=ss syntax_highlighter /
 COPY --from=hss http-server-stabilizer /
+
+# even with everything, we can't get this to statically link
+RUN apk add --no-cache libstdc++
 
 EXPOSE 9238
 ENV ROCKET_ENV "production"

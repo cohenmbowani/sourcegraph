@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/sourcegraph/sourcegraph/internal/errcode"
 	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
@@ -40,10 +41,13 @@ func (c *client) CreatePullRequest(ctx context.Context, repo *Repo, input PullRe
 	}
 
 	var pr PullRequest
-	if err := c.do(ctx, req, &pr); err != nil {
+	if err, code := c.do(ctx, req, &pr); err != nil {
 		return nil, errors.Wrap(err, "sending request")
-	}
 
+		if code <= 400 && code < 200 {
+			return nil, errcode.MakeNonRetryable(err)
+		}
+	}
 	return &pr, nil
 }
 
@@ -57,7 +61,7 @@ func (c *client) DeclinePullRequest(ctx context.Context, repo *Repo, id int64) (
 	}
 
 	var pr PullRequest
-	if err := c.do(ctx, req, &pr); err != nil {
+	if err, _ := c.do(ctx, req, &pr); err != nil {
 		return nil, errors.Wrap(err, "sending request")
 	}
 
@@ -72,7 +76,7 @@ func (c *client) GetPullRequest(ctx context.Context, repo *Repo, id int64) (*Pul
 	}
 
 	var pr PullRequest
-	if err := c.do(ctx, req, &pr); err != nil {
+	if err, _ := c.do(ctx, req, &pr); err != nil {
 		return nil, errors.Wrap(err, "sending request")
 	}
 
@@ -94,7 +98,7 @@ func (c *client) GetPullRequestStatuses(repo *Repo, id int64) (*PaginatedResultS
 			Values []*PullRequestStatus `json:"values"`
 		}
 
-		if err := c.do(ctx, req, &page); err != nil {
+		if err, _ := c.do(ctx, req, &page); err != nil {
 			return nil, nil, err
 		}
 
@@ -120,7 +124,7 @@ func (c *client) UpdatePullRequest(ctx context.Context, repo *Repo, id int64, in
 	}
 
 	var updated PullRequest
-	if err := c.do(ctx, req, &updated); err != nil {
+	if err, _ := c.do(ctx, req, &updated); err != nil {
 		return nil, errors.Wrap(err, "sending request")
 	}
 
@@ -145,7 +149,7 @@ func (c *client) CreatePullRequestComment(ctx context.Context, repo *Repo, id in
 	}
 
 	var comment Comment
-	if err := c.do(ctx, req, &comment); err != nil {
+	if err, _ := c.do(ctx, req, &comment); err != nil {
 		return nil, errors.Wrap(err, "sending request")
 	}
 
@@ -174,7 +178,7 @@ func (c *client) MergePullRequest(ctx context.Context, repo *Repo, id int64, opt
 	}
 
 	var pr PullRequest
-	if err := c.do(ctx, req, &pr); err != nil {
+	if err, _ := c.do(ctx, req, &pr); err != nil {
 		return nil, errors.Wrap(err, "sending request")
 	}
 

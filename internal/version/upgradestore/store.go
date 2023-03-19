@@ -155,8 +155,8 @@ SELECT version, auto_upgrade FROM versions WHERE service = 'frontend'
 `
 
 // SetAutoUpgrade sets the value of versions.auto_upgrade in the frontend database.
-func (s *store) SetAutoUpgrade(ctx context.Context, ready bool) error {
-	if err := s.db.Exec(ctx, sqlf.Sprintf(setAutoUpgradeQuery, ready)); err != nil {
+func (s *store) SetAutoUpgrade(ctx context.Context, enable bool) error {
+	if err := s.db.Exec(ctx, sqlf.Sprintf(setAutoUpgradeQuery, enable)); err != nil {
 		return errors.Wrap(err, "failed to set auto_upgrade")
 	}
 	return nil

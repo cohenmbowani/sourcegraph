@@ -82,7 +82,7 @@ type Mutation {
 
     Only site admins may perform this mutation.
     """
-    setAutoUpgrade(ready: Boolean!): EmptyResponse!
+    setAutoUpgrade(enable: Boolean!): EmptyResponse!
     """
     Updates the user profile information for the user with the given ID.
 

@@ -398,12 +398,12 @@ func (r *upgradeReadinessResolver) RequiredOutOfBandMigrations(ctx context.Conte
 }
 
 func (r *schemaResolver) SetAutoUpgrade(ctx context.Context, args *struct {
-	Ready bool
+	Enable bool
 }) (*EmptyResponse, error) {
 	// 🚨 SECURITY: Only site admins can set auto_upgrade readiness
 	if err := auth.CheckCurrentUserIsSiteAdmin(ctx, r.db); err != nil {
 		return &EmptyResponse{}, err
 	}
-	upgradestore.NewWith(r.db.Handle()).SetAutoUpgrade(ctx, args.Ready)
+	upgradestore.NewWith(r.db.Handle()).SetAutoUpgrade(ctx, args.Enable)
 	return &EmptyResponse{}, nil
 }

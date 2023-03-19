@@ -133,7 +133,7 @@ const SiteUpgradeReadiness: FunctionComponent = () => {
     useEffect(() => {
         if (data) {
             setAutoUpgrade({
-                variables: { ready: Boolean(!data?.site.upgradeReadiness.schemaDrift.length) },
+                variables: { enable: Boolean(!data?.site.upgradeReadiness.schemaDrift.length) },
             })
         }
     }, [data, setAutoUpgrade])

@@ -638,8 +638,8 @@ export const SITE_UPGRADE_READINESS = gql`
 `
 
 export const SET_AUTO_UPGRADE = gql`
-    mutation SetAutoUpgrade($ready: Boolean!) {
-        setAutoUpgrade(ready: $ready) {
+    mutation SetAutoUpgrade($enable: Boolean!) {
+        setAutoUpgrade(enable: $enable) {
             alwaysNil
         }
     }

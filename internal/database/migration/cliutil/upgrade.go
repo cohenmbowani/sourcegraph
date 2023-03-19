@@ -2,7 +2,6 @@ package cliutil
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/urfave/cli/v2"
 
@@ -84,7 +83,6 @@ func Upgrade(
 		if err != nil {
 			return errors.Wrap(err, "checking auto upgrade")
 		}
-		fmt.Printf("currentVersion: %s\nautoUpgrade: %v\n", currentVersion, autoUpgrade)
 
 		// determine versioning logic for upgrade based on auto_upgrade readiness
 

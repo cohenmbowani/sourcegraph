@@ -2,6 +2,7 @@ package cliutil
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/urfave/cli/v2"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/oobmigration"
 	"github.com/sourcegraph/sourcegraph/internal/oobmigration/migrations"
 	"github.com/sourcegraph/sourcegraph/internal/version"
+	"github.com/sourcegraph/sourcegraph/internal/version/upgradestore"
 	"github.com/sourcegraph/sourcegraph/lib/errors"
 	"github.com/sourcegraph/sourcegraph/lib/output"
 )
@@ -72,24 +74,34 @@ func Upgrade(
 			return errors.Wrap(err, "new runner")
 		}
 
-		store, err := runner.Store(ctx, schemas.Frontend.Name)
+		// connect to db and get upgrade readiness state
+		db, err := extractDatabase(ctx, runner)
 		if err != nil {
-			return errors.Wrap(err, "get frontend store")
+			return errors.Wrap(err, "new db handle")
 		}
-
-		fromStr := fromFlag.Get(cmd)
-		toStr := toFlag.Get(cmd)
-
+		store := upgradestore.New(db)
 		currentVersion, autoUpgrade, err := store.GetAutoUpgrade(ctx)
 		if err != nil {
-			return errors.Wrap(err, "check auto upgrade")
-		} else if autoUpgrade {
+			return errors.Wrap(err, "checking auto upgrade")
+		}
+		fmt.Printf("currentVersion: %s\nautoUpgrade: %v\n", currentVersion, autoUpgrade)
+
+		// determine versioning logic for upgrade based on auto_upgrade readiness
+
+		var fromStr, toStr string
+		if autoUpgrade {
 			fromStr = currentVersion
 			toStr = version.Version()
+		} else {
+			fromStr = fromFlag.Get(cmd)
+			toStr = toFlag.Get(cmd)
 		}
-
+		// check for null case
 		if !autoUpgrade && (fromStr == "" || toStr == "") {
 			return errors.New("the -from and -to flags are required when auto upgrade is not enabled")
+		} else {
+			fromStr = fromFlag.Get(cmd)
+			toStr = toFlag.Get(cmd)
 		}
 
 		from, ok := oobmigration.NewVersionFromString(fromStr)

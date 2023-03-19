@@ -3,7 +3,6 @@ package graphqlbackend
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -31,6 +30,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/observation"
 	"github.com/sourcegraph/sourcegraph/internal/oobmigration"
 	"github.com/sourcegraph/sourcegraph/internal/version"
+	"github.com/sourcegraph/sourcegraph/internal/version/upgradestore"
 	"github.com/sourcegraph/sourcegraph/lib/errors"
 	"github.com/sourcegraph/sourcegraph/lib/output"
 
@@ -404,9 +404,6 @@ func (r *schemaResolver) SetAutoUpgrade(ctx context.Context, args *struct {
 	if err := auth.CheckCurrentUserIsSiteAdmin(ctx, r.db); err != nil {
 		return &EmptyResponse{}, err
 	}
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf("UPDATE versions SET auto_upgrade = %v", args.Ready))
-	if err != nil {
-		return &EmptyResponse{}, err
-	}
+	upgradestore.NewWith(r.db.Handle()).SetAutoUpgrade(ctx, args.Ready)
 	return &EmptyResponse{}, nil
 }

@@ -74,20 +74,3 @@ func (s *memoryStore) exec(ctx context.Context, migration definition.Definition,
 	s.appliedVersions = append(s.appliedVersions, migration.ID)
 	return nil
 }
-
-func (s *memoryStore) GetAutoUpgrade(ctx context.Context) (currentVersion string, enabled bool, err error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT version, auto_upgrade FROM versions WHERE service = 'frontend'`)
-	if err != nil {
-		return "", false, err
-	}
-	defer func() { _ = rows.Close() }()
-	if !rows.Next() {
-		return "", false, nil
-	}
-
-	err = rows.Scan(&currentVersion, &enabled)
-	if err != nil {
-		return "", false, err
-	}
-	return currentVersion, enabled, nil
-}

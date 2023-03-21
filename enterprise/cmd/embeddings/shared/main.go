@@ -129,9 +129,9 @@ func NewHandler(
 			return
 		}
 
-		res, err := searchRepoEmbeddingIndex(ctx, args, readFile, getRepoEmbeddingIndex, getQueryEmbedding)
+		res, err := searchRepoEmbeddingIndex(ctx, args, readFile, getRepoEmbeddingIndex, getQueryEmbedding, args.Debug)
 		if err != nil {
-			http.Error(w, "error searching embedding index", http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("error searching embedding index: %s", err.Error()), http.StatusInternalServerError)
 			return
 		}
 

@@ -393,6 +393,7 @@ type GitBlobLSIFDataResolver interface {
 	References(ctx context.Context, args *LSIFPagedQueryPositionArgs) (LocationConnectionResolver, error)
 	Implementations(ctx context.Context, args *LSIFPagedQueryPositionArgs) (LocationConnectionResolver, error)
 	Hover(ctx context.Context, args *LSIFQueryPositionArgs) (HoverResolver, error)
+	Snapshot(ctx context.Context) (_ []SnapshotDataResolver, err error)
 }
 
 type GitTreeLSIFDataResolver interface {
@@ -433,6 +434,11 @@ type LSIFQueryPositionArgs struct {
 type RangeResolver interface {
 	Start() PositionResolver
 	End() PositionResolver
+}
+
+type SnapshotDataResolver interface {
+	Offset() int32
+	Data() string
 }
 
 type PositionResolver interface {

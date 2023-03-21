@@ -18,6 +18,7 @@ type CodeNavService interface {
 	GetRanges(ctx context.Context, args shared.RequestArgs, requestState codenav.RequestState, startLine, endLine int) (adjustedRanges []shared.AdjustedCodeIntelligenceRange, err error)
 	GetStencil(ctx context.Context, args shared.RequestArgs, requestState codenav.RequestState) (adjustedRanges []types.Range, err error)
 	GetClosestDumpsForBlob(ctx context.Context, repositoryID int, commit, path string, exactPath bool, indexer string) (_ []types.Dump, err error)
+	SnapshotForDocument(ctx context.Context, repositoryID int, commit, path string) (data []shared.SnapshotData, err error)
 }
 
 type AutoIndexingService interface {

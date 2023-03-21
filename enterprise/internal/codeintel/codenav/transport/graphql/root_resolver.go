@@ -6,6 +6,7 @@ import (
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/envvar"
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/codenav"
+	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/codenav/shared"
 	sharedresolvers "github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/shared/resolvers"
 	"github.com/sourcegraph/sourcegraph/internal/authz"
 	resolverstubs "github.com/sourcegraph/sourcegraph/internal/codeintel/resolvers"
@@ -75,4 +76,16 @@ func (r *rootResolver) GitBlobLSIFData(ctx context.Context, args *resolverstubs.
 	reqState := codenav.NewRequestState(uploads, r.repoStore, authz.DefaultSubRepoPermsChecker, r.gitserverClient, args.Repo, string(args.Commit), args.Path, r.maximumIndexesPerMonikerSearch, r.hunkCache)
 
 	return NewGitBlobLSIFDataResolver(r.svc, r.uploadSvc, r.policiesSvc, r.gitserverClient, r.siteAdminChecker, r.repoStore, r.prefetcherFactory.Create(), r.locationResolverFactory.Create(), reqState, errTracer, r.operations), nil
+}
+
+type snapshotDataResolver struct {
+	data shared.SnapshotData
+}
+
+func (r *snapshotDataResolver) Offset() int32 {
+	return int32(r.data.DocumentOffset)
+}
+
+func (r *snapshotDataResolver) Data() string {
+	return r.data.Symbol
 }

@@ -59,6 +59,11 @@ type CodeIntelligenceRange struct {
 	HoverText       string
 }
 
+type SnapshotData struct {
+	DocumentOffset int
+	Symbol         string
+}
+
 // referencesCursor stores (enough of) the state of a previous References request used to
 // calculate the offset into the result set to be returned by the current request.
 type ReferencesCursor struct {

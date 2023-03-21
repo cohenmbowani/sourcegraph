@@ -298,3 +298,17 @@ func (r *gitBlobLSIFDataResolver) Diagnostics(ctx context.Context, args *resolve
 
 	return NewDiagnosticConnectionResolver(diagnostics, totalCount, r.locationResolver), nil
 }
+
+func (r *gitBlobLSIFDataResolver) Snapshot(ctx context.Context) (resolvers []resolverstubs.SnapshotDataResolver, err error) {
+	data, err := r.codeNavSvc.SnapshotForDocument(ctx, r.requestState.RepositoryID, r.requestState.Commit, r.requestState.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, d := range data {
+		resolvers = append(resolvers, &snapshotDataResolver{
+			data: d,
+		})
+	}
+	return
+}

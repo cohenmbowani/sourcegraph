@@ -3,6 +3,8 @@ package lsifstore
 import (
 	"context"
 
+	"github.com/sourcegraph/scip/bindings/go/scip"
+
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/codenav/shared"
 	codeintelshared "github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/shared"
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/shared/types"
@@ -42,6 +44,8 @@ type LsifStore interface {
 
 	// Paths
 	GetPathExists(ctx context.Context, bundleID int, path string) (_ bool, err error)
+
+	SCIPDocument(ctx context.Context, id int, path string) (_ *scip.Document, err error)
 }
 
 type store struct {

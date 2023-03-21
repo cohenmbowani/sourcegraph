@@ -39,6 +39,7 @@ import { selectableLineNumbers, SelectedLineRange, selectLines } from './codemir
 import { lockFirstVisibleLine } from './codemirror/lock-line'
 import { navigateToLineOnAnyClickExtension } from './codemirror/navigate-to-any-line-on-click'
 import { occurrenceAtPosition, positionAtCmPosition } from './codemirror/occurrence-utils'
+import { scipSnapshot } from './codemirror/scip-snapshot'
 import { search } from './codemirror/search'
 import { sourcegraphExtensions } from './codemirror/sourcegraph-extensions'
 import { pin, updatePin, selectOccurrence } from './codemirror/token-selection/code-intel-tooltips'
@@ -105,6 +106,8 @@ export interface BlobInfo extends AbsoluteRepoFile, ModeSpec {
 
     /** External URLs for the file */
     externalURLs?: ExternalLinkFields[]
+
+    snapshotData?: { offset: number; data: string }[]
 }
 
 const staticExtensions: Extension = [
@@ -267,6 +270,7 @@ export const CodeMirrorBlob: React.FunctionComponent<BlobProps> = props => {
         },
         [customHistoryAction]
     )
+
     const extensions = useMemo(
         () => [
             // Log uncaught errors that happen in callbacks that we pass to
@@ -281,6 +285,7 @@ export const CodeMirrorBlob: React.FunctionComponent<BlobProps> = props => {
                 initialSelection: position.line !== undefined ? position : null,
                 navigateToLineOnAnyClick: navigateToLineOnAnyClick ?? false,
             }),
+            scipSnapshot(blobInfo.snapshotData),
             codeFoldingExtension(),
             navigateToLineOnAnyClick ? navigateToLineOnAnyClickExtension : tokenSelectionExtension(),
             syntaxHighlight.of(blobInfo),

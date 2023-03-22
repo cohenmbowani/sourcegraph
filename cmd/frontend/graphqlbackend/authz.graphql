@@ -213,6 +213,11 @@ extend type Query {
     ): PermissionsSyncJobsConnection!
 
     """
+    Returns count of permissions sync jobs in the queue.
+    """
+    permissionsSyncJobsQueueSize: Int!
+
+    """
     Returns a list of Bitbucket Project permissions sync jobs for a given set of parameters.
     """
     bitbucketProjectPermissionJobs(

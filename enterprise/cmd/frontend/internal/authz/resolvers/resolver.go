@@ -686,3 +686,16 @@ func (r *Resolver) PermissionsSyncJobs(ctx context.Context, args graphqlbackend.
 
 	return NewPermissionsSyncJobsResolver(r.db, args)
 }
+
+func (r *Resolver) PermissionsSyncJobsQueueSize(ctx context.Context) (int32, error) {
+	var count int
+
+	// 🚨 SECURITY: Only site admins can query sync jobs queue size.
+	if err := auth.CheckCurrentUserIsSiteAdmin(ctx, r.db); err != nil {
+		return int32(count), err
+	}
+
+	count, err := r.db.PermissionSyncJobs().Count(ctx, database.ListPermissionSyncJobOpts{State: database.PermissionsSyncJobStateQueued})
+
+	return int32(count), err
+}

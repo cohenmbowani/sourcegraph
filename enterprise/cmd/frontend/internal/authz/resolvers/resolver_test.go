@@ -2569,3 +2569,46 @@ func mustParseTime(v string) time.Time {
 func intPtr(v int) *int              { return &v }
 func timePtr(v time.Time) *time.Time { return &v }
 func stringPtr(v string) *string     { return &v }
+
+func TestResolver_PermissionsSyncJobsQueueSize(t *testing.T) {
+	t.Run("authenticated as non-admin", func(t *testing.T) {
+		user := &types.User{ID: 42}
+
+		users := database.NewStrictMockUserStore()
+		users.GetByCurrentAuthUserFunc.SetDefaultReturn(user, nil)
+		users.GetByIDFunc.SetDefaultReturn(user, nil)
+
+		db := edb.NewStrictMockEnterpriseDB()
+		db.UsersFunc.SetDefaultReturn(users)
+
+		ctx := actor.WithActor(context.Background(), &actor.Actor{UID: user.ID})
+		_, err := (&Resolver{db: db}).PermissionsSyncJobsQueueSize(ctx)
+		if want := auth.ErrMustBeSiteAdmin; err != want {
+			t.Errorf("err: want %q but got %v", want, err)
+		}
+	})
+
+	t.Run("authenticated as site-admin", func(t *testing.T) {
+		user := &types.User{ID: 42, SiteAdmin: true}
+
+		users := database.NewStrictMockUserStore()
+		users.GetByCurrentAuthUserFunc.SetDefaultReturn(user, nil)
+		users.GetByIDFunc.SetDefaultReturn(user, nil)
+
+		permissionSyncJobStore := database.NewMockPermissionSyncJobStore()
+		permissionSyncJobStore.CountFunc.SetDefaultReturn(2, nil)
+
+		db := edb.NewStrictMockEnterpriseDB()
+		db.UsersFunc.SetDefaultReturn(users)
+		db.PermissionSyncJobsFunc.SetDefaultReturn(permissionSyncJobStore)
+
+		ctx := actor.WithActor(context.Background(), &actor.Actor{UID: user.ID})
+		result, err := (&Resolver{db: db}).PermissionsSyncJobsQueueSize(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := int32(2); result != want {
+			t.Errorf("err: want %d but got %d", want, result)
+		}
+	})
+}

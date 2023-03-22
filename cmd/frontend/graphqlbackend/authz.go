@@ -27,6 +27,7 @@ type AuthzResolver interface {
 	BitbucketProjectPermissionJobs(ctx context.Context, args *BitbucketProjectPermissionJobsArgs) (BitbucketProjectsPermissionJobsResolver, error)
 	AuthzProviderTypes(ctx context.Context) ([]string, error)
 	PermissionsSyncJobs(ctx context.Context, args ListPermissionsSyncJobsArgs) (*graphqlutil.ConnectionResolver[PermissionsSyncJobResolver], error)
+	PermissionsSyncJobsQueueSize(ctx context.Context) (int32, error)
 
 	// RepositoryPermissionsInfo and UserPermissionsInfo are helpers functions.
 	RepositoryPermissionsInfo(ctx context.Context, repoID graphql.ID) (PermissionsInfoResolver, error)

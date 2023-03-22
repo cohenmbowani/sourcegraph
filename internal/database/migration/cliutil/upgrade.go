@@ -2,6 +2,7 @@ package cliutil
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/urfave/cli/v2"
 
@@ -86,29 +87,30 @@ func Upgrade(
 
 		// determine versioning logic for upgrade based on auto_upgrade readiness
 
+		fmt.Printf("currentVersion: %s\nautoUpgrade: %v\nfromFlag:%v\ntoFlag:%v\n", currentVersion, autoUpgrade, fromFlag.IsSet(), toFlag.IsSet())
+
 		var fromStr, toStr string
-		if autoUpgrade {
-			fromStr = currentVersion
-			toStr = version.Version()
-		} else {
+		if fromFlag.Get(cmd) != "" || toFlag.Get(cmd) != "" {
 			fromStr = fromFlag.Get(cmd)
 			toStr = toFlag.Get(cmd)
+		} else {
+			if autoUpgrade {
+				fromStr = currentVersion
+				toStr = version.Version()
+			}
 		}
 		// check for null case
-		if !autoUpgrade && (fromStr == "" || toStr == "") {
+		if fromStr == "" || toStr == "" {
 			return errors.New("the -from and -to flags are required when auto upgrade is not enabled")
-		} else {
-			fromStr = fromFlag.Get(cmd)
-			toStr = toFlag.Get(cmd)
 		}
 
 		from, ok := oobmigration.NewVersionFromString(fromStr)
 		if !ok {
-			return errors.New("bad format for -from")
+			return errors.Newf("bad format for -from = %s", fromStr)
 		}
 		to, ok := oobmigration.NewVersionFromString(toStr)
 		if !ok {
-			return errors.New("bad format for -to")
+			return errors.Newf("bad format for -to = %s", toStr)
 		}
 		if oobmigration.CompareVersions(from, to) != oobmigration.VersionOrderBefore {
 			return errors.Newf("invalid range (from=%s >= to=%s)", from, to)

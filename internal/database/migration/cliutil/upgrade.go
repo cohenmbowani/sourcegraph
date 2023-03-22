@@ -2,7 +2,6 @@ package cliutil
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/urfave/cli/v2"
 
@@ -85,10 +84,7 @@ func Upgrade(
 			return errors.Wrap(err, "checking auto upgrade")
 		}
 
-		// determine versioning logic for upgrade based on auto_upgrade readiness
-
-		fmt.Printf("currentVersion: %s\nautoUpgrade: %v\nfromFlag:%v\ntoFlag:%v\n", currentVersion, autoUpgrade, fromFlag.IsSet(), toFlag.IsSet())
-
+		// determine versioning logic for upgrade based on auto_upgrade readiness and existence of to and from flags
 		var fromStr, toStr string
 		if fromFlag.Get(cmd) != "" || toFlag.Get(cmd) != "" {
 			fromStr = fromFlag.Get(cmd)

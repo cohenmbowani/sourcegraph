@@ -14,6 +14,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/keegancsmith/sqlf"
 	"github.com/lib/pq"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/maps"
 
 	"github.com/sourcegraph/log/logtest"
@@ -57,6 +58,15 @@ func (p *fakeProvider) FetchRepoPerms(context.Context, *extsvc.Repository, authz
 	return nil, nil
 }
 
+func mockExplicitPermsConfig(enabled bool) func() {
+	before := globals.PermissionsUserMapping()
+	globals.SetPermissionsUserMapping(&schema.PermissionsUserMapping{Enabled: enabled})
+
+	return func() {
+		globals.SetPermissionsUserMapping(before)
+	}
+}
+
 // 🚨 SECURITY: Tests are necessary to ensure security.
 func TestAuthzQueryConds(t *testing.T) {
 	cmpOpts := cmp.AllowUnexported(sqlf.Query{})
@@ -64,13 +74,13 @@ func TestAuthzQueryConds(t *testing.T) {
 	logger := logtest.Scoped(t)
 	db := NewDB(logger, dbtest.NewDB(logger, t))
 
-	t.Run("Conflict with permissions user mapping", func(t *testing.T) {
-		before := globals.PermissionsUserMapping()
-		globals.SetPermissionsUserMapping(&schema.PermissionsUserMapping{Enabled: true})
-		defer globals.SetPermissionsUserMapping(before)
-
+	t.Run("Conflict with explicit perms API", func(t *testing.T) {
 		authz.SetProviders(false, []authz.Provider{&fakeProvider{}})
-		defer authz.SetProviders(true, nil)
+		cleanup := mockExplicitPermsConfig(true)
+		t.Cleanup(func() {
+			cleanup()
+			authz.SetProviders(true, nil)
+		})
 
 		_, err := AuthzQueryConds(context.Background(), db)
 		gotErr := fmt.Sprintf("%v", err)
@@ -79,10 +89,41 @@ func TestAuthzQueryConds(t *testing.T) {
 		}
 	})
 
+	t.Run("No conflict with explicit perms API when unified perms model is used", func(t *testing.T) {
+		authz.SetProviders(false, []authz.Provider{&fakeProvider{}})
+		cleanup := mockExplicitPermsConfig(true)
+		mockUnifiedPermsConfig(true)
+		t.Cleanup(func() {
+			authz.SetProviders(true, nil)
+			cleanup()
+			conf.Mock(nil)
+		})
+
+		_, err := AuthzQueryConds(context.Background(), db)
+		require.Nil(t, err, "unexpected error, should have passed without conflict")
+	})
+
+	t.Run("When permissions user mapping is enabled with unified perms, unrestricted repos work correctly", func(t *testing.T) {
+		authz.SetProviders(false, []authz.Provider{&fakeProvider{}})
+		cleanup := mockExplicitPermsConfig(true)
+		mockUnifiedPermsConfig(true)
+		t.Cleanup(func() {
+			authz.SetProviders(true, nil)
+			cleanup()
+			conf.Mock(nil)
+		})
+
+		got, err := AuthzQueryConds(context.Background(), db)
+		require.NoError(t, err)
+		want := authzQuery(false, true, int32(0))
+		if diff := cmp.Diff(want, got, cmpOpts); diff != "" {
+			t.Fatalf("Mismatch (-want +got):\n%s", diff)
+		}
+		require.Contains(t, got.Query(sqlf.PostgresBindVar), ExternalServiceUnrestrictedCondition.Query(sqlf.PostgresBindVar))
+	})
+
 	t.Run("When permissions user mapping is enabled", func(t *testing.T) {
-		before := globals.PermissionsUserMapping()
-		globals.SetPermissionsUserMapping(&schema.PermissionsUserMapping{Enabled: true})
-		defer globals.SetPermissionsUserMapping(before)
+		t.Cleanup(mockExplicitPermsConfig(true))
 
 		got, err := AuthzQueryConds(context.Background(), db)
 		if err != nil {
@@ -276,10 +317,10 @@ VALUES (NULL, %s);
 	return alice, unrestrictedRepo
 }
 
-func mockUnifiedPermsConfig() {
+func mockUnifiedPermsConfig(val bool) {
 	cfg := &conf.Unified{SiteConfiguration: schema.SiteConfiguration{
 		ExperimentalFeatures: &schema.ExperimentalFeatures{
-			UnifiedPermissions: true,
+			UnifiedPermissions: val,
 		},
 	}}
 	conf.Mock(cfg)
@@ -296,10 +337,16 @@ func TestRepoStore_userCanSeeUnrestricedRepo(t *testing.T) {
 	alice, unrestrictedRepo := setupUnrestrictedDB(t, ctx, db)
 
 	authz.SetProviders(false, []authz.Provider{&fakeProvider{}})
-	defer authz.SetProviders(true, nil)
+	t.Cleanup(func() {
+		authz.SetProviders(true, nil)
+	})
 
 	// TODO: remove this test once the migration to unified permissions is finished
 	t.Run("Legacy perms: Alice cannot see private repo, but can see unrestricted repo", func(t *testing.T) {
+		mockUnifiedPermsConfig(false)
+		t.Cleanup(func() {
+			conf.Mock(nil)
+		})
 		aliceCtx := actor.WithActor(ctx, &actor.Actor{UID: alice.ID})
 		repos, err := db.Repos().List(aliceCtx, ReposListOptions{})
 		if err != nil {
@@ -312,9 +359,10 @@ func TestRepoStore_userCanSeeUnrestricedRepo(t *testing.T) {
 	})
 
 	t.Run("Unified perms: Alice cannot see private repo, but can see unrestricted repo", func(t *testing.T) {
-		mockUnifiedPermsConfig()
-		// Always reset the configuration so that it doesn't interfere with other tests
-		defer conf.Mock(nil)
+		mockUnifiedPermsConfig(true)
+		t.Cleanup(func() {
+			conf.Mock(nil)
+		})
 
 		aliceCtx := actor.WithActor(ctx, &actor.Actor{UID: alice.ID})
 		repos, err := db.Repos().List(aliceCtx, ReposListOptions{})
@@ -322,6 +370,95 @@ func TestRepoStore_userCanSeeUnrestricedRepo(t *testing.T) {
 			t.Fatal(err)
 		}
 		wantRepos := []*types.Repo{unrestrictedRepo}
+		if diff := cmp.Diff(wantRepos, repos, cmpopts.IgnoreFields(types.Repo{}, "Sources")); diff != "" {
+			t.Fatalf("Mismatch (-want +got):\n%s", diff)
+		}
+	})
+}
+
+func setupPublicRepo(t *testing.T, db DB) (*types.User, *types.Repo) {
+	ctx := context.Background()
+
+	// Add a single user who is NOT a site admin
+	alice, err := db.Users().Create(ctx,
+		NewUser{
+			Email:                 "alice@example.com",
+			Username:              "alice",
+			Password:              "alice",
+			EmailVerificationCode: "alice",
+		},
+	)
+	require.NoError(t, err)
+	require.NoError(t, db.Users().SetIsSiteAdmin(ctx, alice.ID, false))
+
+	publicRepo := mustCreate(ctx, t, db,
+		&types.Repo{
+			Name:    "public_repo",
+			Private: false,
+			ExternalRepo: api.ExternalRepoSpec{
+				ID:          "public_repo",
+				ServiceType: extsvc.TypeGitHub,
+				ServiceID:   "https://github.com/",
+			},
+		},
+	)
+
+	externalService := &types.ExternalService{
+		Kind:        extsvc.KindGitHub,
+		DisplayName: "GITHUB #1",
+		Config:      extsvc.NewUnencryptedConfig(`{"url": "https://github.com", "repositoryQuery": ["none"], "token": "abc", "authorization": {}}`),
+	}
+	confGet := func() *conf.Unified {
+		return &conf.Unified{}
+	}
+	err = db.ExternalServices().Create(ctx, confGet, externalService)
+	require.NoError(t, err)
+
+	return alice, publicRepo
+}
+
+func TestRepoStore_userCanSeePublicRepo(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	logger := logtest.Scoped(t)
+	db := NewDB(logger, dbtest.NewDB(logger, t))
+	ctx := context.Background()
+
+	alice, publicRepo := setupPublicRepo(t, db)
+
+	// TODO: remove this test once the migration to unified permissions is finished
+	t.Run("Legacy perms: Alice cannot see public repo when explicit permissions are ON", func(t *testing.T) {
+		mockUnifiedPermsConfig(false)
+		cleanup := mockExplicitPermsConfig(true)
+
+		t.Cleanup(func() {
+			cleanup()
+			conf.Mock(nil)
+		})
+
+		aliceCtx := actor.WithActor(ctx, &actor.Actor{UID: alice.ID})
+		repos, err := db.Repos().List(aliceCtx, ReposListOptions{})
+		require.NoError(t, err)
+		require.Equal(t, 0, len(repos))
+	})
+
+	t.Run("Unified perms: Alice can see public repo with explicit permissions ON", func(t *testing.T) {
+		authz.SetProviders(false, []authz.Provider{&fakeProvider{}})
+		cleanup := mockExplicitPermsConfig(true)
+		mockUnifiedPermsConfig(true)
+
+		t.Cleanup(func() {
+			cleanup()
+			authz.SetProviders(true, nil)
+			conf.Mock(nil)
+		})
+
+		aliceCtx := actor.WithActor(ctx, &actor.Actor{UID: alice.ID})
+		repos, err := db.Repos().List(aliceCtx, ReposListOptions{})
+		require.NoError(t, err)
+		wantRepos := []*types.Repo{publicRepo}
 		if diff := cmp.Diff(wantRepos, repos, cmpopts.IgnoreFields(types.Repo{}, "Sources")); diff != "" {
 			t.Fatalf("Mismatch (-want +got):\n%s", diff)
 		}
@@ -544,7 +681,7 @@ func TestRepoStore_List_checkPermissions(t *testing.T) {
 	})
 
 	t.Run("Unified permissions table should be respected if feature flag is on", func(t *testing.T) {
-		mockUnifiedPermsConfig()
+		mockUnifiedPermsConfig(true)
 		// Always reset the configuration so that it doesn't interfere with other tests
 		defer conf.Mock(nil)
 
@@ -870,7 +1007,7 @@ func benchmarkAuthzQuery(b *testing.B, numRepos, numUsers, reposPerUser int) {
 	b.ResetTimer()
 
 	b.Run("list repos, using unified user_repo_permissions table", func(b *testing.B) {
-		mockUnifiedPermsConfig()
+		mockUnifiedPermsConfig(true)
 		defer conf.Mock(nil)
 
 		for i := 0; i < b.N; i++ {

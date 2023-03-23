@@ -8,13 +8,16 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"golang.org/x/exp/slices"
+	"google.golang.org/grpc"
+
+	"github.com/sourcegraph/log"
+
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/conf"
 	"github.com/sourcegraph/sourcegraph/internal/gitserver/protocol"
 	"github.com/sourcegraph/sourcegraph/internal/grpc/defaults"
 	"github.com/sourcegraph/sourcegraph/lib/errors"
-	"golang.org/x/exp/slices"
-	"google.golang.org/grpc"
 )
 
 var addrForRepoInvoked = promauto.NewCounterVec(prometheus.CounterOpts{
@@ -137,6 +140,11 @@ func (a *atomicGitServerConns) update(cfg *conf.Unified) {
 		a.conns.Store(&after)
 		return
 	}
+	log.Scoped("", "gitserver gRPC connections").Info(
+		"new gitserver addresses",
+		log.Strings("before", before.Addresses),
+		log.Strings("after", after.Addresses),
+	)
 
 	// Open connections for each address
 	after.grpcConns = make(map[string]connAndErr, len(after.Addresses))

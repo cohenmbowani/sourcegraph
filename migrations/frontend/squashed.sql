@@ -780,10 +780,14 @@ END;
 $$;
 
 CREATE FUNCTION soft_deleted_repository_name(name text) RETURNS text
-    LANGUAGE plpgsql STRICT
+    LANGUAGE plpgsql
     AS $$
 BEGIN
-    RETURN 'DELETED-' || extract(epoch from transaction_timestamp()) || '-' || name;
+    IF name LIKE 'DELETED-%' THEN
+        RETURN name;
+    ELSE
+        RETURN 'DELETED-' || extract(epoch from transaction_timestamp()) || '-' || name;
+    END IF;
 END;
 $$;
 
@@ -822,12 +826,6 @@ BEGIN
     NEW.first_version = NEW.version;
     RETURN NEW;
 END $$;
-
-CREATE AGGREGATE sg_jsonb_concat_agg(jsonb) (
-    SFUNC = jsonb_concat,
-    STYPE = jsonb,
-    INITCOND = '{}'
-);
 
 CREATE AGGREGATE snapshot_transition_columns(hstore[]) (
     SFUNC = merge_audit_log_transitions,
@@ -1201,6 +1199,7 @@ CREATE TABLE changesets (
     detached_at timestamp with time zone,
     computed_state text NOT NULL,
     external_fork_name citext,
+    previous_failure_message text,
     CONSTRAINT changesets_batch_change_ids_check CHECK ((jsonb_typeof(batch_change_ids) = 'object'::text)),
     CONSTRAINT changesets_external_id_check CHECK ((external_id <> ''::text)),
     CONSTRAINT changesets_external_service_type_not_blank CHECK ((external_service_type <> ''::text)),
@@ -1611,6 +1610,38 @@ CREATE TABLE codeintel_inference_scripts (
 
 COMMENT ON TABLE codeintel_inference_scripts IS 'Contains auto-index job inference Lua scripts as an alternative to setting via environment variables.';
 
+CREATE TABLE codeintel_initial_path_ranks (
+    id bigint NOT NULL,
+    upload_id integer NOT NULL,
+    document_path text NOT NULL,
+    graph_key text NOT NULL,
+    last_scanned_at timestamp with time zone
+);
+
+CREATE SEQUENCE codeintel_initial_path_ranks_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE codeintel_initial_path_ranks_id_seq OWNED BY codeintel_initial_path_ranks.id;
+
+CREATE TABLE codeintel_initial_path_ranks_processed (
+    id bigint NOT NULL,
+    graph_key text NOT NULL,
+    codeintel_initial_path_ranks_id bigint NOT NULL
+);
+
+CREATE SEQUENCE codeintel_initial_path_ranks_processed_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE codeintel_initial_path_ranks_processed_id_seq OWNED BY codeintel_initial_path_ranks_processed.id;
+
 CREATE TABLE codeintel_langugage_support_requests (
     id integer NOT NULL,
     user_id integer NOT NULL,
@@ -1720,13 +1751,12 @@ CREATE SEQUENCE codeintel_ranking_references_id_seq
 ALTER SEQUENCE codeintel_ranking_references_id_seq OWNED BY codeintel_ranking_references.id;
 
 CREATE TABLE codeintel_ranking_references_processed (
-    id integer NOT NULL,
     graph_key text NOT NULL,
-    codeintel_ranking_reference_id integer NOT NULL
+    codeintel_ranking_reference_id integer NOT NULL,
+    id bigint NOT NULL
 );
 
 CREATE SEQUENCE codeintel_ranking_references_processed_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -3626,7 +3656,8 @@ CREATE VIEW reconciler_changesets AS
     c.last_heartbeat_at,
     c.external_fork_name,
     c.external_fork_namespace,
-    c.detached_at
+    c.detached_at,
+    c.previous_failure_message
    FROM (changesets c
      JOIN repo r ON ((r.id = c.repo_id)))
   WHERE ((r.deleted_at IS NULL) AND (EXISTS ( SELECT 1
@@ -3778,13 +3809,10 @@ CREATE TABLE role_permissions (
 
 CREATE TABLE roles (
     id integer NOT NULL,
-    name text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     system boolean DEFAULT false NOT NULL,
-    CONSTRAINT name_not_blank CHECK ((name <> ''::text))
+    name citext NOT NULL
 );
-
-COMMENT ON COLUMN roles.name IS 'The uniquely identifying name of the role.';
 
 COMMENT ON COLUMN roles.system IS 'This is used to indicate whether a role is read-only or can be modified.';
 
@@ -4373,6 +4401,10 @@ ALTER TABLE ONLY cm_webhooks ALTER COLUMN id SET DEFAULT nextval('cm_webhooks_id
 
 ALTER TABLE ONLY codeintel_autoindex_queue ALTER COLUMN id SET DEFAULT nextval('codeintel_autoindex_queue_id_seq'::regclass);
 
+ALTER TABLE ONLY codeintel_initial_path_ranks ALTER COLUMN id SET DEFAULT nextval('codeintel_initial_path_ranks_id_seq'::regclass);
+
+ALTER TABLE ONLY codeintel_initial_path_ranks_processed ALTER COLUMN id SET DEFAULT nextval('codeintel_initial_path_ranks_processed_id_seq'::regclass);
+
 ALTER TABLE ONLY codeintel_langugage_support_requests ALTER COLUMN id SET DEFAULT nextval('codeintel_langugage_support_requests_id_seq'::regclass);
 
 ALTER TABLE ONLY codeintel_path_ranks ALTER COLUMN id SET DEFAULT nextval('codeintel_path_ranks_id_seq'::regclass);
@@ -4630,6 +4662,12 @@ ALTER TABLE ONLY codeintel_autoindex_queue
 
 ALTER TABLE ONLY codeintel_commit_dates
     ADD CONSTRAINT codeintel_commit_dates_pkey PRIMARY KEY (repository_id, commit_bytea);
+
+ALTER TABLE ONLY codeintel_initial_path_ranks
+    ADD CONSTRAINT codeintel_initial_path_ranks_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY codeintel_initial_path_ranks_processed
+    ADD CONSTRAINT codeintel_initial_path_ranks_processed_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY codeintel_path_ranks
     ADD CONSTRAINT codeintel_path_ranks_pkey PRIMARY KEY (id);
@@ -4896,9 +4934,6 @@ ALTER TABLE ONLY role_permissions
     ADD CONSTRAINT role_permissions_pkey PRIMARY KEY (permission_id, role_id);
 
 ALTER TABLE ONLY roles
-    ADD CONSTRAINT roles_name UNIQUE (name);
-
-ALTER TABLE ONLY roles
     ADD CONSTRAINT roles_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY saved_searches
@@ -5075,6 +5110,8 @@ CREATE INDEX changesets_reconciler_state_idx ON changesets USING btree (reconcil
 
 CREATE INDEX cm_action_jobs_state_idx ON cm_action_jobs USING btree (state);
 
+CREATE INDEX cm_action_jobs_trigger_event ON cm_action_jobs USING btree (trigger_event);
+
 CREATE INDEX cm_slack_webhooks_monitor ON cm_slack_webhooks USING btree (monitor);
 
 CREATE INDEX cm_trigger_jobs_finished_at ON cm_trigger_jobs USING btree (finished_at);
@@ -5084,6 +5121,14 @@ CREATE INDEX cm_trigger_jobs_state_idx ON cm_trigger_jobs USING btree (state);
 CREATE INDEX cm_webhooks_monitor ON cm_webhooks USING btree (monitor);
 
 CREATE UNIQUE INDEX codeintel_autoindex_queue_repository_id_commit ON codeintel_autoindex_queue USING btree (repository_id, rev);
+
+CREATE INDEX codeintel_initial_path_ranks_graph_key_id ON codeintel_initial_path_ranks USING btree (graph_key, id);
+
+CREATE INDEX codeintel_initial_path_ranks_graph_key_last_scanned_at ON codeintel_initial_path_ranks USING btree (graph_key, last_scanned_at NULLS FIRST, id);
+
+CREATE UNIQUE INDEX codeintel_initial_path_ranks_processed_cgraph_key_codeintel_ini ON codeintel_initial_path_ranks_processed USING btree (graph_key, codeintel_initial_path_ranks_id);
+
+CREATE INDEX codeintel_initial_path_upload_id ON codeintel_initial_path_ranks USING btree (upload_id);
 
 CREATE UNIQUE INDEX codeintel_langugage_support_requests_user_id_language ON codeintel_langugage_support_requests USING btree (user_id, language_id);
 
@@ -5099,6 +5144,8 @@ CREATE INDEX codeintel_ranking_definitions_graph_key_symbol_search ON codeintel_
 
 CREATE UNIQUE INDEX codeintel_ranking_exports_graph_key_upload_id ON codeintel_ranking_exports USING btree (graph_key, upload_id);
 
+CREATE INDEX codeintel_ranking_path_counts_inputs_graph_key_id ON codeintel_ranking_path_counts_inputs USING btree (graph_key, id);
+
 CREATE INDEX codeintel_ranking_path_counts_inputs_graph_key_repository_id_id ON codeintel_ranking_path_counts_inputs USING btree (graph_key, repository_id, id) WHERE (NOT processed);
 
 CREATE INDEX codeintel_ranking_references_graph_key_id ON codeintel_ranking_references USING btree (graph_key, id);
@@ -5106,6 +5153,8 @@ CREATE INDEX codeintel_ranking_references_graph_key_id ON codeintel_ranking_refe
 CREATE INDEX codeintel_ranking_references_graph_key_last_scanned_at_id ON codeintel_ranking_references USING btree (graph_key, last_scanned_at NULLS FIRST, id);
 
 CREATE UNIQUE INDEX codeintel_ranking_references_processed_graph_key_codeintel_rank ON codeintel_ranking_references_processed USING btree (graph_key, codeintel_ranking_reference_id);
+
+CREATE INDEX codeintel_ranking_references_processed_reference_id ON codeintel_ranking_references_processed USING btree (codeintel_ranking_reference_id);
 
 CREATE INDEX codeintel_ranking_references_upload_id ON codeintel_ranking_references USING btree (upload_id);
 
@@ -5225,7 +5274,7 @@ CREATE INDEX lsif_dependency_indexing_jobs_upload_id ON lsif_dependency_syncing_
 
 CREATE INDEX lsif_dependency_repos_blocked ON lsif_dependency_repos USING btree (blocked);
 
-CREATE INDEX lsif_dependency_repos_last_checked_at ON lsif_dependency_repos USING btree (last_checked_at);
+CREATE INDEX lsif_dependency_repos_last_checked_at ON lsif_dependency_repos USING btree (last_checked_at NULLS FIRST);
 
 CREATE INDEX lsif_dependency_repos_name_id ON lsif_dependency_repos USING btree (name, id);
 
@@ -5315,7 +5364,7 @@ CREATE UNIQUE INDEX package_repo_filters_unique_matcher_per_scheme ON package_re
 
 CREATE INDEX package_repo_versions_blocked ON package_repo_versions USING btree (blocked);
 
-CREATE INDEX package_repo_versions_last_checked_at ON package_repo_versions USING btree (last_checked_at);
+CREATE INDEX package_repo_versions_last_checked_at ON package_repo_versions USING btree (last_checked_at NULLS FIRST);
 
 CREATE UNIQUE INDEX package_repo_versions_unique_version_per_package ON package_repo_versions USING btree (package_id, version);
 
@@ -5404,6 +5453,8 @@ CREATE INDEX sub_repo_perms_user_id ON sub_repo_permissions USING btree (user_id
 CREATE UNIQUE INDEX teams_name ON teams USING btree (name);
 
 CREATE UNIQUE INDEX unique_resource_permission ON namespace_permissions USING btree (namespace, resource_id, user_id);
+
+CREATE UNIQUE INDEX unique_role_name ON roles USING btree (name);
 
 CREATE INDEX user_credentials_credential_idx ON user_credentials USING btree (((encryption_key_id = ANY (ARRAY[''::text, 'previously-migrated'::text]))));
 
@@ -5750,6 +5801,9 @@ ALTER TABLE ONLY feature_flag_overrides
 ALTER TABLE ONLY feature_flag_overrides
     ADD CONSTRAINT feature_flag_overrides_namespace_user_id_fkey FOREIGN KEY (namespace_user_id) REFERENCES users(id) ON DELETE CASCADE;
 
+ALTER TABLE ONLY codeintel_initial_path_ranks_processed
+    ADD CONSTRAINT fk_codeintel_initial_path_ranks FOREIGN KEY (codeintel_initial_path_ranks_id) REFERENCES codeintel_initial_path_ranks(id) ON DELETE CASCADE;
+
 ALTER TABLE ONLY codeintel_ranking_references_processed
     ADD CONSTRAINT fk_codeintel_ranking_reference FOREIGN KEY (codeintel_ranking_reference_id) REFERENCES codeintel_ranking_references(id) ON DELETE CASCADE;
 
@@ -6014,7 +6068,7 @@ INSERT INTO lsif_configuration_policies VALUES (3, NULL, 'Default commit retenti
 
 SELECT pg_catalog.setval('lsif_configuration_policies_id_seq', 3, true);
 
-INSERT INTO roles VALUES (1, 'USER', '2023-01-04 16:29:41.195966+00', true);
-INSERT INTO roles VALUES (2, 'SITE_ADMINISTRATOR', '2023-01-04 16:29:41.195966+00', true);
+INSERT INTO roles VALUES (1, '2023-01-04 16:29:41.195966+00', true, 'USER');
+INSERT INTO roles VALUES (2, '2023-01-04 16:29:41.195966+00', true, 'SITE_ADMINISTRATOR');
 
 SELECT pg_catalog.setval('roles_id_seq', 3, true);

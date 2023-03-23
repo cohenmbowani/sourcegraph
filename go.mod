@@ -78,7 +78,7 @@ require (
 	github.com/graph-gophers/graphql-go v1.5.0
 	github.com/graphql-go/graphql v0.8.0
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79
-	github.com/hashicorp/golang-lru v0.5.4
+	github.com/hashicorp/golang-lru/v2 v2.0.2
 	github.com/hexops/valast v1.4.3
 	github.com/honeycombio/libhoney-go v1.15.8
 	github.com/inconshreveable/log15 v0.0.0-20201112154412-8562bdadbbac
@@ -165,7 +165,6 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.13.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.13.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.13.0
-	go.opentelemetry.io/otel/exporters/prometheus v0.36.0
 	go.opentelemetry.io/otel/metric v0.36.0
 	go.opentelemetry.io/otel/sdk v1.13.0
 	go.opentelemetry.io/otel/sdk/metric v0.36.0
@@ -220,6 +219,7 @@ require (
 	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/grafana-tools/sdk v0.0.0-20220919052116-6562121319fc // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.0-rc.2.0.20210128111500-3ff779b52992 // indirect
+	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/moby/sys/mountinfo v0.6.2 // indirect
 	github.com/mpvl/unique v0.0.0-20150818121801-cbe035fff7de // indirect
@@ -280,7 +280,7 @@ replace (
 	// We maintain a potentially long-term fork of embedded-postgres for
 	// Sourcegraph App. We add features like unix sockets. If this replace
 	// directive still exists in 2024, lets consider hard forking.
-	github.com/fergusstrange/embedded-postgres => github.com/sourcegraph/embedded-postgres v1.19.1-0.20230222065424-1cc470c429e1
+	github.com/fergusstrange/embedded-postgres => github.com/sourcegraph/embedded-postgres v1.19.1-0.20230313141935-8f62b6947f2c
 
 	// As of https://github.com/grpc-ecosystem/go-grpc-middleware/blob/7ac0846398432dee083fd8bc4ad7abacf8147ff2/providers/openmetrics/go.mod#L7,
 	// the latest release of the gRPC Prometheus middleware depends on a version of go-grpc-middleware that is two years old, and
@@ -294,7 +294,7 @@ replace (
 )
 
 require (
-	github.com/sourcegraph/zoekt v0.0.0-20230308131753-939eb52f3486
+	github.com/sourcegraph/zoekt v0.0.0-20230315153951-06c1bce6400a
 	github.com/stretchr/objx v0.5.0 // indirect
 )
 
@@ -337,7 +337,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.2.0 // indirect
 	github.com/certifi/gocertifi v0.0.0-20210507211836-431795d63e8d // indirect
 	github.com/charmbracelet/glamour v0.5.0 // indirect
-	github.com/cockroachdb/errors v1.9.1 // indirect
+	github.com/cockroachdb/errors v1.9.1
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
 	github.com/cockroachdb/redact v1.1.3
 	github.com/containerd/typeurl v1.0.2 // indirect

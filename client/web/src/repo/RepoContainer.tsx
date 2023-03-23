@@ -19,7 +19,7 @@ import { displayRepoName } from '@sourcegraph/shared/src/components/RepoLink'
 import { ExtensionsControllerProps } from '@sourcegraph/shared/src/extensions/controller'
 import { PlatformContextProps } from '@sourcegraph/shared/src/platform/context'
 import { Settings } from '@sourcegraph/shared/src/schema/settings.schema'
-import { SearchContextProps } from '@sourcegraph/shared/src/search'
+import { EditorHint, SearchContextProps } from '@sourcegraph/shared/src/search'
 import { escapeSpaces } from '@sourcegraph/shared/src/search/query/filters'
 import { SettingsCascadeProps } from '@sourcegraph/shared/src/settings/settings'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
@@ -36,6 +36,7 @@ import { HeroPage } from '../components/HeroPage'
 import { ExternalLinkFields, RepositoryFields } from '../graphql-operations'
 import { CodeInsightsProps } from '../insights/types'
 import { NotebookProps } from '../notebooks'
+import { OwnConfigProps } from '../own/OwnConfigProps'
 import { searchQueryForRepoRevision, SearchStreamingProps } from '../search'
 import { useExperimentalQueryInput } from '../search/useExperimentalSearchInput'
 import { useNavbarQueryState } from '../stores'
@@ -87,8 +88,6 @@ export interface RepoContainerContext
 
     onDidUpdateExternalLinks: (externalLinks: ExternalLinkFields[] | undefined) => void
 
-    globbing: boolean
-
     isMacPlatform: boolean
 
     isSourcegraphDotCom: boolean
@@ -115,14 +114,14 @@ interface RepoContainerProps
         CodeIntelligenceProps,
         BatchChangesProps,
         CodeInsightsProps,
-        NotebookProps {
+        NotebookProps,
+        OwnConfigProps {
     repoContainerRoutes: readonly RepoContainerRoute[]
     repoRevisionContainerRoutes: readonly RepoRevisionContainerRoute[]
     repoHeaderActionButtons: readonly RepoHeaderActionButton[]
     repoSettingsAreaRoutes: readonly RepoSettingsAreaRoute[]
     repoSettingsSidebarGroups: readonly RepoSettingsSideBarGroup[]
     authenticatedUser: AuthenticatedUser | null
-    globbing: boolean
     isMacPlatform: boolean
     isSourcegraphDotCom: boolean
 }
@@ -138,7 +137,7 @@ export interface HoverThresholdProps {
  * Renders a horizontal bar and content for a repository page.
  */
 export const RepoContainer: FC<RepoContainerProps> = props => {
-    const { extensionsController, globbing, repoContainerRoutes, authenticatedUser, selectedSearchContextSpec } = props
+    const { extensionsController, repoContainerRoutes, authenticatedUser, selectedSearchContextSpec } = props
 
     const location = useLocation()
 
@@ -268,14 +267,15 @@ export const RepoContainer: FC<RepoContainerProps> = props => {
     )
     const onNavbarQueryChange = useNavbarQueryState(state => state.setQueryState)
     useEffect(() => {
-        let query = queryPrefix + searchQueryForRepoRevision(repoName, globbing, revision)
+        let query = queryPrefix + searchQueryForRepoRevision(repoName, revision)
         if (filePath) {
-            query = `${query.trimEnd()} file:${escapeSpaces(globbing ? filePath : '^' + escapeRegExp(filePath))}`
+            query = `${query.trimEnd()} file:${escapeSpaces('^' + escapeRegExp(filePath))}`
         }
         onNavbarQueryChange({
             query,
+            hint: EditorHint.Blur,
         })
-    }, [revision, filePath, repoName, onNavbarQueryChange, globbing, queryPrefix])
+    }, [revision, filePath, repoName, onNavbarQueryChange, queryPrefix])
 
     const isError = isErrorLike(repoOrError) || isErrorLike(resolvedRevisionOrError)
 
@@ -299,9 +299,8 @@ export const RepoContainer: FC<RepoContainerProps> = props => {
 
     const repo = isError ? undefined : repoOrError
     const resolvedRevision = isError ? undefined : resolvedRevisionOrError
-    const isCodeIntelRepositoryBadgeVisible = getIsCodeIntelRepositoryBadgeVisible({
+    const isBrainDotVisible = getIsBrainDotVisible({
         location,
-        settingsCascade: props.settingsCascade,
         revision,
         repoName,
     })
@@ -368,7 +367,7 @@ export const RepoContainer: FC<RepoContainerProps> = props => {
                 )}
             </RepoHeaderContributionPortal>
 
-            {isCodeIntelRepositoryBadgeVisible && (
+            {isBrainDotVisible && (
                 <RepoHeaderContributionPortal
                     position="right"
                     priority={110}
@@ -376,14 +375,8 @@ export const RepoContainer: FC<RepoContainerProps> = props => {
                     {...repoHeaderContributionsLifecycleProps}
                 >
                     {({ actionType }) =>
-                        props.codeIntelligenceBadgeMenu && actionType === 'nav' ? (
-                            <props.codeIntelligenceBadgeMenu
-                                key="code-intelligence-status"
-                                repoName={repoName}
-                                revision={rawRevision || 'HEAD'}
-                                filePath={filePath || ''}
-                                settingsCascade={props.settingsCascade}
-                            />
+                        props.brainDot && actionType === 'nav' ? (
+                            <props.brainDot key="code-intelligence-status" repoName={repoName} />
                         ) : null
                     }
                 </RepoHeaderContributionPortal>
@@ -438,21 +431,18 @@ export const RepoContainer: FC<RepoContainerProps> = props => {
     )
 }
 
-function getIsCodeIntelRepositoryBadgeVisible(options: {
-    settingsCascade: RepoContainerProps['settingsCascade']
+function getIsBrainDotVisible({
+    location,
+    repoName,
+    revision,
+}: {
     location: Location
     repoName: string
     revision: string | undefined
 }): boolean {
-    const { settingsCascade, repoName, revision, location } = options
-
-    const isCodeIntelRepositoryBadgeEnabled =
-        !isErrorLike(settingsCascade.final) &&
-        settingsCascade.final?.experimentalFeatures?.codeIntelRepositoryBadge?.enabled === true
-
     // Remove leading repository name and possible leading revision, then compare the remaining routes to
-    // see if we should display the code graph badge for this route. We want this to be visible on
-    // the repo root page, as well as directory and code views, but not administrative/non-code views.
+    // see if we should display the braindot badge for this route. We want this to be visible on the repo
+    // root page, as well as directory and code views, but not administrative/non-code views.
     //
     // + 1 for the leading `/` in the pathname
     const matchRevisionAndRest = location.pathname.slice(repoName.length + 1)
@@ -460,10 +450,8 @@ function getIsCodeIntelRepositoryBadgeVisible(options: {
         revision && matchRevisionAndRest.startsWith(`@${revision || ''}`)
             ? matchRevisionAndRest.slice(revision.length + 1)
             : matchRevisionAndRest
-    const isCodeIntelRepositoryBadgeVisibleOnRoute =
-        matchOnlyRest === '' || matchOnlyRest.startsWith('/-/tree') || matchOnlyRest.startsWith('/-/blob')
 
-    return isCodeIntelRepositoryBadgeEnabled && isCodeIntelRepositoryBadgeVisibleOnRoute
+    return matchOnlyRest === '' || matchOnlyRest.startsWith('/-/tree') || matchOnlyRest.startsWith('/-/blob')
 }
 
 /**

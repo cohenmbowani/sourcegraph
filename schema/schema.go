@@ -66,6 +66,22 @@ type ApiRatelimit struct {
 	PerUser int `json:"perUser"`
 }
 
+// App description: Configuration options for App only.
+type App struct {
+	// DotcomAuthToken description: Authentication token for Sourcegraph.com. If present, indicates that the App account is connected to a Sourcegraph.com account.
+	DotcomAuthToken string `json:"dotcomAuthToken,omitempty"`
+}
+type AppNotifications struct {
+	// Key description: e.g. '2023-03-10-my-key'; MUST START WITH YYYY-MM-DD; a globally unique key used to track whether the message has been dismissed.
+	Key string `json:"key"`
+	// Message description: The Markdown message to display
+	Message string `json:"message"`
+	// VersionMax description: If present, this message will only be shown to Sourcegraph App instances in this inclusive version range.
+	VersionMax string `json:"version.max,omitempty"`
+	// VersionMin description: If present, this message will only be shown to Sourcegraph App instances in this inclusive version range.
+	VersionMin string `json:"version.min,omitempty"`
+}
+
 // AuditLog description: EXPERIMENTAL: Configuration for audit logging (specially formatted log entries for tracking sensitive events)
 type AuditLog struct {
 	// GitserverAccess description: Capture gitserver access logs as part of the audit log.
@@ -534,12 +550,6 @@ type CloudKMSEncryptionKey struct {
 	Keyname         string `json:"keyname"`
 	Type            string `json:"type"`
 }
-type CodeIntelRepositoryBadge struct {
-	// Enabled description: Show the code intelligence badge when viewing a repository.
-	Enabled bool `json:"enabled"`
-	// ForNerds description: Show entirely too much information.
-	ForNerds *bool `json:"forNerds,omitempty"`
-}
 
 // Completions description: Configuration for the completions service.
 type Completions struct {
@@ -569,6 +579,8 @@ type DebugLog struct {
 
 // Dotcom description: Configuration options for Sourcegraph.com only.
 type Dotcom struct {
+	// AppNotifications description: Notifications to display in the Sourcegraph app.
+	AppNotifications []*AppNotifications `json:"app.notifications,omitempty"`
 	// SlackLicenseExpirationWebhook description: Slack webhook for upcoming license expiration notifications.
 	SlackLicenseExpirationWebhook string `json:"slackLicenseExpirationWebhook,omitempty"`
 	// SrcCliVersionCache description: Configuration related to the src-cli version cache. This should only be used on sourcegraph.com.
@@ -1341,7 +1353,7 @@ type InsightSeries struct {
 // JVMPackagesConnection description: Configuration for a connection to a JVM packages repository.
 type JVMPackagesConnection struct {
 	// Maven description: Configuration for resolving from Maven repositories.
-	Maven *Maven `json:"maven,omitempty"`
+	Maven Maven `json:"maven"`
 }
 
 // Log description: Configuration for logging and alerting, including to external services.
@@ -1354,7 +1366,7 @@ type Log struct {
 
 // Maven description: Configuration for resolving from Maven repositories.
 type Maven struct {
-	// Credentials description: Contents of a coursier.credentials file needed for accessing the Maven repositories.
+	// Credentials description: Contents of a coursier.credentials file needed for accessing the Maven repositories. See the 'Inline' section at https://get-coursier.io/docs/other-credentials#inline for more details.
 	Credentials string `json:"credentials,omitempty"`
 	// Dependencies description: An array of artifact "groupID:artifactID:version" strings specifying which Maven artifacts to mirror on Sourcegraph.
 	Dependencies []string `json:"dependencies,omitempty"`
@@ -1397,6 +1409,12 @@ type Notice struct {
 	// Location description: The location where this notice is shown: "top" for the top of every page, "home" for the homepage.
 	Location string `json:"location"`
 	// Message description: The message to display. Markdown formatting is supported.
+	Message string `json:"message"`
+}
+type Notifications struct {
+	// Key description: e.g. '2023-03-10-my-key'; MUST START WITH YYYY-MM-DD; a globally unique key used to track whether the message has been dismissed.
+	Key string `json:"key"`
+	// Message description: The Markdown message to display
 	Message string `json:"message"`
 }
 type Notifier struct {
@@ -1847,7 +1865,7 @@ type RubyRateLimit struct {
 type RustPackagesConnection struct {
 	// Dependencies description: An array of strings specifying Rust packages to mirror in Sourcegraph.
 	Dependencies []string `json:"dependencies,omitempty"`
-	// IndexRepositoryName description: Name of the git repository containing the crates.io index. Empty by default, which means no syncing happens. Updating this setting does not trigger a sync immediately, you must wait until the next scheduled sync for the value to get picked up.
+	// IndexRepositoryName description: Name of the git repository containing the crates.io index. Only set if you intend to sync every crate from the index. Updating this setting does not trigger a sync immediately, you must wait until the next scheduled sync for the value to get picked up.
 	IndexRepositoryName string `json:"indexRepositoryName,omitempty"`
 	// IndexRepositorySyncInterval description: How frequently to sync with the index repository. String formatted as a Go time.Duration. The Sourcegraph server needs to be restarted to pick up a new value of this configuration option.
 	IndexRepositorySyncInterval string `json:"indexRepositorySyncInterval,omitempty"`
@@ -2144,8 +2162,7 @@ type SettingsExperimentalFeatures struct {
 	// CodeInsightsLandingPage description: DEPRECATED: Enables code insights landing page layout.
 	CodeInsightsLandingPage *bool `json:"codeInsightsLandingPage,omitempty"`
 	// CodeInsightsRepoUI description: Specifies which (code insight repo) editor to use for repo query UI
-	CodeInsightsRepoUI       *string                   `json:"codeInsightsRepoUI,omitempty"`
-	CodeIntelRepositoryBadge *CodeIntelRepositoryBadge `json:"codeIntelRepositoryBadge,omitempty"`
+	CodeInsightsRepoUI *string `json:"codeInsightsRepoUI,omitempty"`
 	// CodeMonitoringWebHooks description: Shows code monitor webhook and Slack webhook actions in the UI, allowing users to configure them.
 	CodeMonitoringWebHooks *bool `json:"codeMonitoringWebHooks,omitempty"`
 	// EnableCodeMirrorFileView description: Uses CodeMirror to display files. In this first iteration not all features of the current file view are available.
@@ -2182,8 +2199,6 @@ type SettingsExperimentalFeatures struct {
 	SearchQueryInput *string `json:"searchQueryInput,omitempty"`
 	// SearchResultsAggregations description: Display aggregations for your search results on the search screen.
 	SearchResultsAggregations *bool `json:"searchResultsAggregations,omitempty"`
-	// SetupWizard description: Experimental setup wizard
-	SetupWizard *bool `json:"setupWizard,omitempty"`
 	// ShowCodeMonitoringLogs description: Shows code monitoring logs tab.
 	ShowCodeMonitoringLogs *bool `json:"showCodeMonitoringLogs,omitempty"`
 	// ShowMultilineSearchConsole description: Enables the multiline search console at search/console
@@ -2230,7 +2245,6 @@ func (v *SettingsExperimentalFeatures) UnmarshalJSON(data []byte) error {
 	delete(m, "codeInsightsCompute")
 	delete(m, "codeInsightsLandingPage")
 	delete(m, "codeInsightsRepoUI")
-	delete(m, "codeIntelRepositoryBadge")
 	delete(m, "codeMonitoringWebHooks")
 	delete(m, "enableCodeMirrorFileView")
 	delete(m, "enableLazyBlobSyntaxHighlighting")
@@ -2249,7 +2263,6 @@ func (v *SettingsExperimentalFeatures) UnmarshalJSON(data []byte) error {
 	delete(m, "searchContextsQuery")
 	delete(m, "searchQueryInput")
 	delete(m, "searchResultsAggregations")
-	delete(m, "setupWizard")
 	delete(m, "showCodeMonitoringLogs")
 	delete(m, "showMultilineSearchConsole")
 	delete(m, "symbolKindTags")
@@ -2296,6 +2309,8 @@ type SiteConfiguration struct {
 	RedirectUnsupportedBrowser bool `json:"RedirectUnsupportedBrowser,omitempty"`
 	// ApiRatelimit description: Configuration for API rate limiting
 	ApiRatelimit *ApiRatelimit `json:"api.ratelimit,omitempty"`
+	// App description: Configuration options for App only.
+	App *App `json:"app,omitempty"`
 	// AuthAccessTokens description: Settings for access tokens, which enable external tools to access the Sourcegraph API with the privileges of the user.
 	AuthAccessTokens *AuthAccessTokens `json:"auth.accessTokens,omitempty"`
 	// AuthEnableUsernameChanges description: Enables users to change their username after account creation. Warning: setting this to be true has security implications if you have enabled (or will at any point in the future enable) repository permissions with an option that relies on username equivalency between Sourcegraph and an external service or authentication provider. Do NOT set this to true if you are using non-built-in authentication OR rely on username equivalency for repository permissions.
@@ -2368,7 +2383,7 @@ type SiteConfiguration struct {
 	CodeIntelRankingDocumentReferenceCountsEnabled *bool `json:"codeIntelRanking.documentReferenceCountsEnabled,omitempty"`
 	// CodeIntelRankingDocumentReferenceCountsGraphKey description: An arbitrary identifier used to group calculated rankings from SCIP data (including the SCIP export).
 	CodeIntelRankingDocumentReferenceCountsGraphKey string `json:"codeIntelRanking.documentReferenceCountsGraphKey,omitempty"`
-	// CodeIntelRankingStaleResultsAge description: The interval at which to run the reduce job that computes document reference counts. Default is 72hrs.
+	// CodeIntelRankingStaleResultsAge description: The interval at which to run the reduce job that computes document reference counts. Default is 24hrs.
 	CodeIntelRankingStaleResultsAge int `json:"codeIntelRanking.staleResultsAge,omitempty"`
 	// Completions description: Configuration for the completions service.
 	Completions *Completions `json:"completions,omitempty"`
@@ -2384,7 +2399,7 @@ type SiteConfiguration struct {
 	DisableAutoGitUpdates bool `json:"disableAutoGitUpdates,omitempty"`
 	// DisableFeedbackSurvey description: Disable the feedback survey
 	DisableFeedbackSurvey bool `json:"disableFeedbackSurvey,omitempty"`
-	// DisableNonCriticalTelemetry description: Disable aggregated event counts from being sent to Sourcegraph.com via pings.
+	// DisableNonCriticalTelemetry description: DEPRECATED. Has no effect.
 	DisableNonCriticalTelemetry bool `json:"disableNonCriticalTelemetry,omitempty"`
 	// DisablePublicRepoRedirects description: Disable redirects to sourcegraph.com when visiting public repositories that can't exist on this server.
 	DisablePublicRepoRedirects bool `json:"disablePublicRepoRedirects,omitempty"`
@@ -2393,6 +2408,8 @@ type SiteConfiguration struct {
 	// EmailAddress description: The "from" address for emails sent by this server.
 	// Please see https://docs.sourcegraph.com/admin/config/email
 	EmailAddress string `json:"email.address,omitempty"`
+	// EmailSenderName description: The name to use in the "from" address for emails sent by this server.
+	EmailSenderName string `json:"email.senderName,omitempty"`
 	// EmailSmtp description: The SMTP server used to send transactional emails.
 	// Please see https://docs.sourcegraph.com/admin/config/email
 	EmailSmtp *SMTPServerConfig `json:"email.smtp,omitempty"`
@@ -2473,6 +2490,8 @@ type SiteConfiguration struct {
 	LsifEnforceAuth bool `json:"lsifEnforceAuth,omitempty"`
 	// MaxReposToSearch description: DEPRECATED: Configure maxRepos in search.limits. The maximum number of repositories to search across. The user is prompted to narrow their query if exceeded. Any value less than or equal to zero means unlimited.
 	MaxReposToSearch int `json:"maxReposToSearch,omitempty"`
+	// Notifications description: Notifications recieved from Sourcegraph.com to display in Sourcegraph.
+	Notifications []*Notifications `json:"notifications,omitempty"`
 	// ObservabilityAlerts description: Configure notifications for Sourcegraph's built-in alerts.
 	ObservabilityAlerts []*ObservabilityAlerts `json:"observability.alerts,omitempty"`
 	// ObservabilityCaptureSlowGraphQLRequestsLimit description: (debug) Set a limit to the amount of captured slow GraphQL requests being stored for visualization. For defining the threshold for a slow GraphQL request, see observability.logSlowGraphQLRequests.
@@ -2491,6 +2510,8 @@ type SiteConfiguration struct {
 	OrganizationInvitations *OrganizationInvitations `json:"organizationInvitations,omitempty"`
 	// OutboundRequestLogLimit description: The maximum number of outbound requests to retain. This is a global limit across all outbound requests. If the limit is exceeded, older items will be deleted. If the limit is 0, no outbound requests are logged.
 	OutboundRequestLogLimit int `json:"outboundRequestLogLimit,omitempty"`
+	// OwnBestEffortTeamMatching description: The Own service will attempt to match a Team by the last part of its handle if it contains a slash and no match is found for its full handle.
+	OwnBestEffortTeamMatching *bool `json:"own.bestEffortTeamMatching,omitempty"`
 	// ParentSourcegraph description: URL to fetch unreachable repository details from. Defaults to "https://sourcegraph.com"
 	ParentSourcegraph *ParentSourcegraph `json:"parentSourcegraph,omitempty"`
 	// PermissionsSyncJobCleanupInterval description: Time interval (in seconds) of how often cleanup worker should remove old jobs from permissions sync jobs table.
@@ -2523,6 +2544,8 @@ type SiteConfiguration struct {
 	RepoPurgeWorker *RepoPurgeWorker `json:"repoPurgeWorker,omitempty"`
 	// ScimAuthToken description: DISCLAIMER: UNDER DEVELOPMENT. THE ENDPOINT DOES NOT COMPLY WITH THE SCIM STANDARD YET. The SCIM auth token is used to authenticate SCIM requests. If not set, SCIM is disabled.
 	ScimAuthToken string `json:"scim.authToken,omitempty"`
+	// ScimIdentityProvider description: Identity provider used for SCIM support.  "STANDARD" should be used unless a more specific value is available
+	ScimIdentityProvider string `json:"scim.identityProvider,omitempty"`
 	// SearchIndexSymbolsEnabled description: Whether indexed symbol search is enabled. This is contingent on the indexed search configuration, and is true by default for instances with indexed search enabled. Enabling this will cause every repository to re-index, which is a time consuming (several hours) operation. Additionally, it requires more storage and ram to accommodate the added symbols information in the search index.
 	SearchIndexSymbolsEnabled *bool `json:"search.index.symbols.enabled,omitempty"`
 	// SearchLargeFiles description: A list of file glob patterns where matching files will be indexed and searched regardless of their size. Files still need to be valid utf-8 to be indexed. The glob pattern syntax can be found here: https://github.com/bmatcuk/doublestar#patterns.
@@ -2570,6 +2593,7 @@ func (v *SiteConfiguration) UnmarshalJSON(data []byte) error {
 	}
 	delete(m, "RedirectUnsupportedBrowser")
 	delete(m, "api.ratelimit")
+	delete(m, "app")
 	delete(m, "auth.accessTokens")
 	delete(m, "auth.enableUsernameChanges")
 	delete(m, "auth.lockout")
@@ -2611,6 +2635,7 @@ func (v *SiteConfiguration) UnmarshalJSON(data []byte) error {
 	delete(m, "disablePublicRepoRedirects")
 	delete(m, "dotcom")
 	delete(m, "email.address")
+	delete(m, "email.senderName")
 	delete(m, "email.smtp")
 	delete(m, "email.templates")
 	delete(m, "embeddings")
@@ -2651,6 +2676,7 @@ func (v *SiteConfiguration) UnmarshalJSON(data []byte) error {
 	delete(m, "log")
 	delete(m, "lsifEnforceAuth")
 	delete(m, "maxReposToSearch")
+	delete(m, "notifications")
 	delete(m, "observability.alerts")
 	delete(m, "observability.captureSlowGraphQLRequestsLimit")
 	delete(m, "observability.client")
@@ -2660,6 +2686,7 @@ func (v *SiteConfiguration) UnmarshalJSON(data []byte) error {
 	delete(m, "observability.tracing")
 	delete(m, "organizationInvitations")
 	delete(m, "outboundRequestLogLimit")
+	delete(m, "own.bestEffortTeamMatching")
 	delete(m, "parentSourcegraph")
 	delete(m, "permissions.syncJobCleanupInterval")
 	delete(m, "permissions.syncJobsHistorySize")
@@ -2676,6 +2703,7 @@ func (v *SiteConfiguration) UnmarshalJSON(data []byte) error {
 	delete(m, "repoListUpdateInterval")
 	delete(m, "repoPurgeWorker")
 	delete(m, "scim.authToken")
+	delete(m, "scim.identityProvider")
 	delete(m, "search.index.symbols.enabled")
 	delete(m, "search.largeFiles")
 	delete(m, "search.limits")

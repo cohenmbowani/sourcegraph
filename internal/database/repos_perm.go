@@ -46,8 +46,9 @@ func GetAuthzQueryParameters(ctx context.Context, db DB) (params *AuthzQueryPara
 
 	// 🚨 SECURITY: Blocking access to all repositories if both code host authz
 	// provider(s) and permissions user mapping are configured.
+	// But only if legacy permissions are used.
 	if params.UsePermissionsUserMapping {
-		if len(authzProviders) > 0 {
+		if len(authzProviders) > 0 && !params.UnifiedPermsEnabled {
 			return nil, errPermissionsUserMappingConflict
 		}
 		authzAllowByDefault = false
@@ -160,8 +161,10 @@ func authzQuery(bypassAuthz, usePermissionsUserMapping bool, authenticatedUserID
 	unrestrictedReposQuery := GetUnrestrictedReposCond(unifiedPermsEnabled)
 	conditions := []*sqlf.Query{unrestrictedReposQuery}
 
-	// Treat all external services as restricted when user mapping is enabled
-	if !usePermissionsUserMapping {
+	// If unified permissions are enabled or explicit permissions API is disabled
+	// add a condition to check if repo is public or external service is unrestricted.
+	// Otherwise all repositories are considered as restricted, even public ones.
+	if unifiedPermsEnabled || !usePermissionsUserMapping {
 		conditions = append(conditions, ExternalServiceUnrestrictedCondition)
 	}
 

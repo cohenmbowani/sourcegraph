@@ -40,6 +40,7 @@ go_library(
         "//internal/api",
         "//internal/codeintel/dependencies",
         "//internal/conf",
+        "//internal/conf/deploy",
         "//internal/conf/reposource",
         "//internal/database",
         "//internal/database/dbutil",
@@ -119,13 +120,13 @@ go_test(
     ],
     data = glob(["testdata/**"]),
     embed = [":server"],
+    # This test loads coursier as a side effect, so we ensure the
+    # path is sandboxed properly.
+    env = {"COURSIER_CACHE_DIR": "/tmp"},
     tags = [
         # Test requires localhost database
         "requires-network",
     ],
-    # This test loads coursier as a side effect, so we ensure the
-    # path is sandboxed properly.
-    env = {"COURSIER_CACHE_DIR": "/tmp"},
     deps = [
         "//internal/actor",
         "//internal/api",

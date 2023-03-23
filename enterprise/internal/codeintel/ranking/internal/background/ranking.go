@@ -3,6 +3,7 @@ package background
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/sourcegraph/log"
@@ -38,7 +39,9 @@ func exportRankingGraph(
 	numReferencesInserted := 0
 
 	for _, upload := range uploads {
+		documentPaths := []string{}
 		if err := lsifstore.InsertDefinitionsAndReferencesForDocument(ctx, upload, graphKey, writeBatchSize, func(ctx context.Context, upload shared.ExportedUpload, rankingBatchSize int, rankingGraphKey, path string, document *scip.Document) error {
+			documentPaths = append(documentPaths, path)
 			numDefinitions, numReferences, err := setDefinitionsAndReferencesForUpload(ctx, store, upload, rankingBatchSize, rankingGraphKey, path, document)
 			numDefinitionsInserted += numDefinitions
 			numReferencesInserted += numReferences
@@ -49,6 +52,18 @@ func exportRankingGraph(
 				log.Int("id", upload.ID),
 				log.String("repo", upload.Repo),
 				log.String("root", upload.Root),
+				log.Error(err),
+			)
+
+			return 0, 0, 0, err
+		}
+
+		if err := store.InsertInitialPathRanks(ctx, upload.ID, documentPaths, graphKey); err != nil {
+			logger.Error(
+				"Failed to insert initial path counts",
+				log.Int("id", upload.ID),
+				log.Int("repoID", upload.RepoID),
+				log.String("graphKey", graphKey),
 				log.Error(err),
 			)
 
@@ -66,6 +81,8 @@ func exportRankingGraph(
 	return len(uploads), numDefinitionsInserted, numReferencesInserted, nil
 }
 
+const skipPrefix = "lsif ."
+
 func setDefinitionsAndReferencesForUpload(
 	ctx context.Context,
 	store store.Store,
@@ -77,7 +94,7 @@ func setDefinitionsAndReferencesForUpload(
 	seenDefinitions := map[string]struct{}{}
 	definitions := []shared.RankingDefinitions{}
 	for _, occ := range document.Occurrences {
-		if occ.Symbol == "" || scip.IsLocalSymbol(occ.Symbol) {
+		if occ.Symbol == "" || scip.IsLocalSymbol(occ.Symbol) || strings.HasPrefix(occ.Symbol, skipPrefix) {
 			continue
 		}
 
@@ -93,7 +110,7 @@ func setDefinitionsAndReferencesForUpload(
 
 	references := []string{}
 	for _, occ := range document.Occurrences {
-		if occ.Symbol == "" || scip.IsLocalSymbol(occ.Symbol) {
+		if occ.Symbol == "" || scip.IsLocalSymbol(occ.Symbol) || strings.HasPrefix(occ.Symbol, skipPrefix) {
 			continue
 		}
 
@@ -123,14 +140,31 @@ func setDefinitionsAndReferencesForUpload(
 	return len(definitions), len(references), nil
 }
 
-func vacuumStaleDefinitionsAndReferences(ctx context.Context, store store.Store) (int, int, error) {
+func vacuumStaleDefinitions(ctx context.Context, store store.Store) (int, int, error) {
 	if enabled := conf.CodeIntelRankingDocumentReferenceCountsEnabled(); !enabled {
 		return 0, 0, nil
 	}
 
-	// TODO - split these for better metrics
-	numDefinitionRecordsScanned, numReferenceRecordsScanned, numDefinitionRecordsRemoved, numReferenceRecordsRemoved, err := store.VacuumStaleDefinitionsAndReferences(ctx, rankingshared.GraphKey())
-	return numDefinitionRecordsScanned + numReferenceRecordsScanned, numDefinitionRecordsRemoved + numReferenceRecordsRemoved, err
+	numDefinitionRecordsScanned, numDefinitionRecordsRemoved, err := store.VacuumStaleDefinitions(ctx, rankingshared.GraphKey())
+	return numDefinitionRecordsScanned, numDefinitionRecordsRemoved, err
+}
+
+func vacuumStaleReferences(ctx context.Context, store store.Store) (int, int, error) {
+	if enabled := conf.CodeIntelRankingDocumentReferenceCountsEnabled(); !enabled {
+		return 0, 0, nil
+	}
+
+	numReferenceRecordsScanned, numReferenceRecordsRemoved, err := store.VacuumStaleReferences(ctx, rankingshared.GraphKey())
+	return numReferenceRecordsScanned, numReferenceRecordsRemoved, err
+}
+
+func vacuumStaleInitialPaths(ctx context.Context, store store.Store) (int, int, error) {
+	if enabled := conf.CodeIntelRankingDocumentReferenceCountsEnabled(); !enabled {
+		return 0, 0, nil
+	}
+
+	numPathRecordsScanned, numStalePathRecordsDeleted, err := store.VacuumStaleInitialPaths(ctx, rankingshared.GraphKey())
+	return numPathRecordsScanned, numStalePathRecordsDeleted, err
 }
 
 func vacuumStaleGraphs(ctx context.Context, store store.Store) (int, int, error) {
@@ -159,6 +193,26 @@ func mapRankingGraph(
 	}
 
 	return store.InsertPathCountInputs(
+		ctx,
+		rankingshared.DerivativeGraphKeyFromTime(time.Now()),
+		batchSize,
+	)
+}
+
+func mapInitializerRankingGraph(
+	ctx context.Context,
+	store store.Store,
+	batchSize int,
+) (
+	numInitialPathsProcessed int,
+	numInitialPathRanksInserted int,
+	err error,
+) {
+	if enabled := conf.CodeIntelRankingDocumentReferenceCountsEnabled(); !enabled {
+		return 0, 0, nil
+	}
+
+	return store.InsertInitialPathCounts(
 		ctx,
 		rankingshared.DerivativeGraphKeyFromTime(time.Now()),
 		batchSize,

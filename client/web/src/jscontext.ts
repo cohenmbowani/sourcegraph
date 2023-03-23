@@ -54,6 +54,7 @@ export type SourcegraphContextCurrentUser = Pick<
     | 'session'
     | 'emails'
     | 'latestSettings'
+    | 'permissions'
 >
 
 /**
@@ -138,10 +139,7 @@ export interface SourcegraphContext extends Pick<Required<SiteConfiguration>, 'e
     /**
      * A subset of the site configuration. Not all fields are set.
      */
-    site: Pick<
-        SiteConfiguration,
-        'auth.public' | 'update.channel' | 'disableNonCriticalTelemetry' | 'authz.enforceForSiteAdmins'
-    >
+    site: Pick<SiteConfiguration, 'auth.public' | 'update.channel' | 'authz.enforceForSiteAdmins'>
 
     /** Whether access tokens are enabled. */
     accessTokensAllow: 'all-users-create' | 'site-admin-create' | 'none'
@@ -156,6 +154,12 @@ export interface SourcegraphContext extends Pick<Required<SiteConfiguration>, 'e
      * Likely running within a Docker container under a Mac host OS.
      */
     likelyDockerOnMac: boolean
+
+    /**
+     * Whether the setup wizard supports file picker query, it's used
+     * only for the Sourcegraph App (in all others deploy types it's always false)
+     */
+    localFilePickerAvailable: boolean
 
     /**
      * Whether or not the server needs to restart in order to apply a pending
@@ -194,6 +198,12 @@ export interface SourcegraphContext extends Pick<Required<SiteConfiguration>, 'e
 
     /** Whether embeddings are enabled on this site. */
     embeddingsEnabled: boolean
+
+    /**
+     * Local git URL, it's used only to create a local external service
+     * in Sourcegraph App.
+     */
+    srcServeGitUrl: string
 
     /** Whether users are allowed to add their own code and at what permission level. */
     externalServicesUserMode: 'disabled' | 'public' | 'all' | 'unknown'

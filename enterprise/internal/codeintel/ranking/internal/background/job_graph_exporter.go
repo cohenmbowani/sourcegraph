@@ -47,20 +47,56 @@ func NewSymbolExporter(
 	})
 }
 
-func NewSymbolJanitor(
+func NewSymbolDefinitionsJanitor(
 	observationCtx *observation.Context,
 	store store.Store,
 	interval time.Duration,
 ) goroutine.BackgroundRoutine {
-	name := "codeintel.ranking.symbol-janitor"
+	name := "codeintel.ranking.symbol-definitions-janitor"
 
 	return background.NewJanitorJob(context.Background(), background.JanitorOptions{
 		Name:        name,
-		Description: "Removes stale data from ranking definitions and reference tables.",
+		Description: "Removes stale data from the ranking definitions table.",
 		Interval:    interval,
 		Metrics:     background.NewJanitorMetrics(observationCtx, name, recordTypeName),
 		CleanupFunc: func(ctx context.Context) (numRecordsScanned int, numRecordsAltered int, err error) {
-			return vacuumStaleDefinitionsAndReferences(ctx, store)
+			return vacuumStaleDefinitions(ctx, store)
+		},
+	})
+}
+
+func NewSymbolReferencesJanitor(
+	observationCtx *observation.Context,
+	store store.Store,
+	interval time.Duration,
+) goroutine.BackgroundRoutine {
+	name := "codeintel.ranking.symbol-references-janitor"
+
+	return background.NewJanitorJob(context.Background(), background.JanitorOptions{
+		Name:        name,
+		Description: "Removes stale data from the ranking references table.",
+		Interval:    interval,
+		Metrics:     background.NewJanitorMetrics(observationCtx, name, recordTypeName),
+		CleanupFunc: func(ctx context.Context) (numRecordsScanned int, numRecordsAltered int, err error) {
+			return vacuumStaleReferences(ctx, store)
+		},
+	})
+}
+
+func NewSymbolInitialPathsJanitor(
+	observationCtx *observation.Context,
+	store store.Store,
+	interval time.Duration,
+) goroutine.BackgroundRoutine {
+	name := "codeintel.ranking.symbol-initial-paths-janitor"
+
+	return background.NewJanitorJob(context.Background(), background.JanitorOptions{
+		Name:        name,
+		Description: "Removes stale data from the ranking initial paths table.",
+		Interval:    interval,
+		Metrics:     background.NewJanitorMetrics(observationCtx, name, recordTypeName),
+		CleanupFunc: func(ctx context.Context) (numRecordsScanned int, numRecordsAltered int, err error) {
+			return vacuumStaleInitialPaths(ctx, store)
 		},
 	})
 }
@@ -116,7 +152,35 @@ func NewMapper(
 		Metrics:     background.NewPipelineMetrics(observationCtx, name, recordTypeName),
 		ProcessFunc: func(ctx context.Context) (numRecordsProcessed int, numRecordsAltered background.TaggedCounts, err error) {
 			numReferencesScanned, nuPathCountInputsInserted, err := mapRankingGraph(ctx, store, batchSize)
+			if err != nil {
+				return 0, nil, err
+			}
+
 			return numReferencesScanned, background.NewSingleCount(nuPathCountInputsInserted), err
+		},
+	})
+}
+
+func NewSeedMapper(
+	observationCtx *observation.Context,
+	store store.Store,
+	interval time.Duration,
+	batchSize int,
+) goroutine.BackgroundRoutine {
+	name := "codeintel.ranking.file-reference-count-seed-mapper"
+
+	return background.NewPipelineJob(context.Background(), background.PipelineOptions{
+		Name:        name,
+		Description: "Adds initial zero counts to files that may not contain any known references.",
+		Interval:    interval,
+		Metrics:     background.NewPipelineMetrics(observationCtx, name, recordTypeName),
+		ProcessFunc: func(ctx context.Context) (numRecordsProcessed int, numRecordsAltered background.TaggedCounts, err error) {
+			numInitialPathsScanned, nuPathCountInputsInserted, err := mapInitializerRankingGraph(ctx, store, batchSize)
+			if err != nil {
+				return 0, nil, err
+			}
+
+			return numInitialPathsScanned, background.NewSingleCount(nuPathCountInputsInserted), err
 		},
 	})
 }

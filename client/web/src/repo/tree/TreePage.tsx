@@ -8,6 +8,7 @@ import {
     mdiHistory,
     mdiPackageVariantClosed,
     mdiSourceBranch,
+    mdiSourceFork,
     mdiSourceRepository,
     mdiTag,
 } from '@mdi/js'
@@ -27,6 +28,7 @@ import { SettingsCascadeProps } from '@sourcegraph/shared/src/settings/settings'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
 import { toPrettyBlobURL, toURIWithPath } from '@sourcegraph/shared/src/util/url'
 import {
+    Badge,
     Button,
     ButtonGroup,
     Container,
@@ -47,6 +49,7 @@ import { BreadcrumbSetters } from '../../components/Breadcrumbs'
 import { PageTitle } from '../../components/PageTitle'
 import { useFeatureFlag } from '../../featureFlags/useFeatureFlag'
 import { RepositoryFields } from '../../graphql-operations'
+import { OwnConfigProps } from '../../own/OwnConfigProps'
 import { basename } from '../../util/path'
 import { FilePathBreadcrumbs } from '../FilePathBreadcrumbs'
 import { isPackageServiceType } from '../packages/isPackageServiceType'
@@ -55,7 +58,7 @@ import { TreePageContent } from './TreePageContent'
 
 import styles from './TreePage.module.scss'
 
-interface Props
+export interface Props
     extends SettingsCascadeProps<Settings>,
         ExtensionsControllerProps,
         PlatformContextProps,
@@ -63,14 +66,14 @@ interface Props
         CodeIntelligenceProps,
         BatchChangesProps,
         Pick<SearchContextProps, 'selectedSearchContextSpec'>,
-        BreadcrumbSetters {
+        BreadcrumbSetters,
+        OwnConfigProps {
     repo: RepositoryFields | undefined
     repoName: string
     /** The tree's path in TreePage. We call it filePath for consistency elsewhere. */
     filePath: string
     commitID: string
     revision: string
-    globbing: boolean
     isSourcegraphDotCom: boolean
     className?: string
 }
@@ -96,6 +99,7 @@ export const TreePage: FC<Props> = ({
     codeIntelligenceEnabled,
     batchChangesEnabled,
     isSourcegraphDotCom,
+    ownEnabled,
     className,
     ...props
 }) => {
@@ -156,7 +160,8 @@ export const TreePage: FC<Props> = ({
         !!settingsCascade.final?.experimentalFeatures?.codeInsights &&
         settingsCascade.final['insights.displayLocation.directory'] === true
 
-    const [ownEnabled] = useFeatureFlag('search-ownership')
+    const [ownFeatureFlagEnabled] = useFeatureFlag('search-ownership')
+    const showOwnership = ownEnabled && ownFeatureFlagEnabled && !isSourcegraphDotCom
 
     // Add DirectoryViewer
     const uri = toURIWithPath({ repoName, commitID, filePath })
@@ -200,14 +205,28 @@ export const TreePage: FC<Props> = ({
         return `${repoString}`
     }
 
+    const getIcon = (): string => {
+        if (isPackage) {
+            return mdiPackageVariantClosed
+        }
+        if (repo?.isFork) {
+            return mdiSourceFork
+        }
+        return mdiSourceRepository
+    }
+
     const RootHeaderSection = (): React.ReactElement => (
         <div className="d-flex flex-wrap justify-content-between px-0">
             <div className={styles.header}>
                 <PageHeader className="mb-3 test-tree-page-title">
                     <PageHeader.Heading as="h2" styleAs="h1">
-                        <PageHeader.Breadcrumb icon={isPackage ? mdiPackageVariantClosed : mdiSourceRepository}>
-                            {displayRepoName(repo?.name || '')}
-                        </PageHeader.Breadcrumb>
+                        <Icon aria-hidden={true} svgPath={getIcon()} className="mr-2" />
+                        <span data-testid="repo-header">{displayRepoName(repo?.name || '')}</span>
+                        {repo?.isFork && (
+                            <Badge variant="outlineSecondary" className="mx-2 mt-2" data-testid="repo-fork-badge">
+                                Fork
+                            </Badge>
+                        )}
                     </PageHeader.Heading>
                 </PageHeader>
                 {repo?.description && <Text>{repo.description}</Text>}
@@ -281,7 +300,7 @@ export const TreePage: FC<Props> = ({
                             />
                         </Tooltip>
                     )}
-                    {ownEnabled && !isSourcegraphDotCom && (
+                    {showOwnership && (
                         <Tooltip content="Ownership">
                             <Button
                                 className="flex-shrink-0"

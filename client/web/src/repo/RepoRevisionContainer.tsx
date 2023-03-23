@@ -19,6 +19,7 @@ import { BreadcrumbSetters } from '../components/Breadcrumbs'
 import { RepositoryFields } from '../graphql-operations'
 import { CodeInsightsProps } from '../insights/types'
 import { NotebookProps } from '../notebooks'
+import { OwnConfigProps } from '../own/OwnConfigProps'
 import { SearchStreamingProps } from '../search'
 import { eventLogger } from '../tracking/eventLogger'
 import { RouteV6Descriptor } from '../util/contributions'
@@ -54,13 +55,12 @@ export interface RepoRevisionContainerContext
         BatchChangesProps,
         Pick<CodeIntelligenceProps, 'codeIntelligenceEnabled' | 'useCodeIntel'>,
         CodeInsightsProps,
-        NotebookProps {
+        NotebookProps,
+        OwnConfigProps {
     repo: RepositoryFields | undefined
     resolvedRevision: ResolvedRevision | undefined
 
     repoName: string
-
-    globbing: boolean
 
     isMacPlatform: boolean
 
@@ -85,7 +85,8 @@ interface RepoRevisionContainerProps
         CodeIntelligenceProps,
         BatchChangesProps,
         CodeInsightsProps,
-        NotebookProps {
+        NotebookProps,
+        OwnConfigProps {
     routes: readonly RepoRevisionContainerRoute[]
     repoSettingsAreaRoutes: readonly RepoSettingsAreaRoute[]
     repoSettingsSidebarGroups: readonly RepoSettingsSideBarGroup[]
@@ -99,8 +100,6 @@ interface RepoRevisionContainerProps
 
     /** The repoName from the URL */
     repoName: string
-
-    globbing: boolean
 
     isMacPlatform: boolean
 

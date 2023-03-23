@@ -162,9 +162,10 @@ ts_project(
         "src/batches/backend.ts",
         "src/batches/icons.tsx",
         "src/batches/index.ts",
+        "src/batches/utils.ts",
         "src/code-monitoring/CodeMonitoringLogo.tsx",
         "src/codeMonitoring/index.ts",
-        "src/codeintel/CodeIntelligenceBadge.tsx",
+        "src/codeintel/BrainDot.tsx",
         "src/codeintel/ReferencesPanel.mocks.ts",
         "src/codeintel/ReferencesPanel.tsx",
         "src/codeintel/ReferencesPanelQueries.ts",
@@ -264,8 +265,6 @@ ts_project(
         "src/components/externalServices/AddExternalServicesPage.tsx",
         "src/components/externalServices/ExternalServiceCard.tsx",
         "src/components/externalServices/ExternalServiceEditPage.tsx",
-        "src/components/externalServices/ExternalServiceEditingAppLimitInPlaceAlert.tsx",
-        "src/components/externalServices/ExternalServiceEditingAppLimitReachedAlert.tsx",
         "src/components/externalServices/ExternalServiceEditingDisabledAlert.tsx",
         "src/components/externalServices/ExternalServiceEditingTemporaryAlert.tsx",
         "src/components/externalServices/ExternalServiceForm.tsx",
@@ -280,7 +279,6 @@ ts_project(
         "src/components/externalServices/backend.ts",
         "src/components/externalServices/externalServices.tsx",
         "src/components/externalServices/index.ts",
-        "src/components/externalServices/isAppLocalFileService.ts",
         "src/components/fuzzyFinder/FuzzyActions.tsx",
         "src/components/fuzzyFinder/FuzzyFiles.tsx",
         "src/components/fuzzyFinder/FuzzyFinder.mocks.tsx",
@@ -304,6 +302,8 @@ ts_project(
         "src/components/useUserHistory.ts",
         "src/contributions.ts",
         "src/enterprise/EnterpriseWebApp.tsx",
+        "src/enterprise/app/AppAuthCallbackPage.tsx",
+        "src/enterprise/app/AppComingSoonPage.tsx",
         "src/enterprise/batches/BatchChangeTabs.tsx",
         "src/enterprise/batches/BatchSpec.tsx",
         "src/enterprise/batches/BatchSpecNode.tsx",
@@ -516,19 +516,13 @@ ts_project(
         "src/enterprise/code-monitoring/components/logs/TriggerEvent.tsx",
         "src/enterprise/code-monitoring/global/GlobalCodeMonitoringArea.tsx",
         "src/enterprise/code-monitoring/testing/util.ts",
-        "src/enterprise/codeintel/badge/components/CodeIntelligenceBadgeContent.tsx",
-        "src/enterprise/codeintel/badge/components/CodeIntelligenceBadgeMenu.tsx",
-        "src/enterprise/codeintel/badge/components/IndexerSummary.tsx",
-        "src/enterprise/codeintel/badge/components/InternalCodeIntelligenceBadgeContent.tsx",
-        "src/enterprise/codeintel/badge/components/RequestLink.tsx",
-        "src/enterprise/codeintel/badge/components/Unsupported.tsx",
-        "src/enterprise/codeintel/badge/components/UploadOrIndexMeta.tsx",
-        "src/enterprise/codeintel/badge/components/UploadOrIndexMetaTable.tsx",
-        "src/enterprise/codeintel/badge/components/UserFacingCodeIntelligenceBadgeContent.tsx",
+        "src/enterprise/codeintel/admin/AdminCodeIntelArea.tsx",
         "src/enterprise/codeintel/badge/hooks/queries.ts",
-        "src/enterprise/codeintel/badge/hooks/useCodeIntelStatus.ts",
+        "src/enterprise/codeintel/configuration/backend.ts",
         "src/enterprise/codeintel/configuration/components/CodeIntelConfigurationPageHeader.tsx",
         "src/enterprise/codeintel/configuration/components/ConfigurationEditor.tsx",
+        "src/enterprise/codeintel/configuration/components/ConfigurationForm.tsx",
+        "src/enterprise/codeintel/configuration/components/ConfigurationInferButton.tsx",
         "src/enterprise/codeintel/configuration/components/CreatePolicyButtons.tsx",
         "src/enterprise/codeintel/configuration/components/Duration.tsx",
         "src/enterprise/codeintel/configuration/components/DurationSelect.tsx",
@@ -543,9 +537,9 @@ ts_project(
         "src/enterprise/codeintel/configuration/components/inference-form/auto-index-to-form-job.ts",
         "src/enterprise/codeintel/configuration/components/inference-form/form-data-to-schema.ts",
         "src/enterprise/codeintel/configuration/components/inference-form/types.ts",
+        "src/enterprise/codeintel/configuration/components/inference-form/util.ts",
         "src/enterprise/codeintel/configuration/components/inference-script/InferenceScriptEditor.tsx",
         "src/enterprise/codeintel/configuration/components/inference-script/InferenceScriptPreview.tsx",
-        "src/enterprise/codeintel/configuration/components/inference-script/backend.ts",
         "src/enterprise/codeintel/configuration/hooks/queryPolicies.tsx",
         "src/enterprise/codeintel/configuration/hooks/types.tsx",
         "src/enterprise/codeintel/configuration/hooks/useDeletePolicies.tsx",
@@ -565,6 +559,7 @@ ts_project(
         "src/enterprise/codeintel/configuration/schema.json",
         "src/enterprise/codeintel/configuration/shared.ts",
         "src/enterprise/codeintel/dashboard/backend.ts",
+        "src/enterprise/codeintel/dashboard/components/BrainDot.tsx",
         "src/enterprise/codeintel/dashboard/components/ConfigurationStateBadge.tsx",
         "src/enterprise/codeintel/dashboard/components/DataSummary.tsx",
         "src/enterprise/codeintel/dashboard/components/IndexStateBadge.tsx",
@@ -639,6 +634,7 @@ ts_project(
         "src/enterprise/insights/admin-ui/query.ts",
         "src/enterprise/insights/components/DownloadFileButton.tsx",
         "src/enterprise/insights/components/code-insights-page/CodeInsightsPage.tsx",
+        "src/enterprise/insights/components/code-insights-page/limit-access-banner/CodeInsightsLimitAccessAppBanner.tsx",
         "src/enterprise/insights/components/code-insights-page/limit-access-banner/CodeInsightsLimitAccessBanner.tsx",
         "src/enterprise/insights/components/creation-ui/CodeInsightDashboardsVisibility.tsx",
         "src/enterprise/insights/components/creation-ui/code-insight-time-step-picker/CodeInsightTimeStepPicker.tsx",
@@ -886,6 +882,7 @@ ts_project(
         "src/enterprise/organizations/settings/sidebaritems.ts",
         "src/enterprise/own/DeleteFileButton.tsx",
         "src/enterprise/own/IngestedFileViewer.tsx",
+        "src/enterprise/own/OwnPage.tsx",
         "src/enterprise/own/RepositoryOwnPage.tsx",
         "src/enterprise/own/RepositoryOwnPageContents.tsx",
         "src/enterprise/own/UploadFileButton.tsx",
@@ -899,8 +896,10 @@ ts_project(
         "src/enterprise/rbac/SiteAdminRolesPage.tsx",
         "src/enterprise/rbac/backend.ts",
         "src/enterprise/rbac/components/ConfirmDeleteRoleModal.tsx",
+        "src/enterprise/rbac/components/CreateRoleModal.tsx",
         "src/enterprise/rbac/components/Permissions.tsx",
         "src/enterprise/rbac/components/RoleNode.tsx",
+        "src/enterprise/repo/EnterpriseRepositoryFileTreePage.tsx",
         "src/enterprise/repo/enterpriseRepoContainerRoutes.tsx",
         "src/enterprise/repo/enterpriseRepoRevisionContainerRoutes.tsx",
         "src/enterprise/repo/repoHeaderActionButtons.tsx",
@@ -926,7 +925,9 @@ ts_project(
         "src/enterprise/searchContexts/repositoryRevisionsConfigParser.ts",
         "src/enterprise/site-admin/SiteAdminAuthenticationProvidersPage.tsx",
         "src/enterprise/site-admin/SiteAdminExternalAccountsPage.tsx",
-        "src/enterprise/site-admin/SiteAdminLsifUploadPage.tsx",
+        "src/enterprise/site-admin/SiteAdminPreciseIndexPage.tsx",
+        "src/enterprise/site-admin/UserManagement/backend.ts",
+        "src/enterprise/site-admin/UserManagement/components/RoleAssignmentModal.tsx",
         "src/enterprise/site-admin/backend.ts",
         "src/enterprise/site-admin/cody/RepoEmbeddingJobNode.tsx",
         "src/enterprise/site-admin/cody/SiteAdminCodyPage.tsx",
@@ -1015,6 +1016,7 @@ ts_project(
         "src/namespaces/index.ts",
         "src/namespaces/navitems.ts",
         "src/namespaces/routes.tsx",
+        "src/nav/AppUserConnectDotComAccount.tsx",
         "src/nav/GlobalNavbar.tsx",
         "src/nav/NavBar/NavBar.tsx",
         "src/nav/NavBar/NavDropdown.tsx",
@@ -1094,9 +1096,11 @@ ts_project(
         "src/org/settings/profile/OrgSettingsProfilePage.tsx",
         "src/org/settings/routes.tsx",
         "src/org/settings/sidebaritems.ts",
+        "src/own/OwnConfigProps.ts",
         "src/person/PersonLink.tsx",
         "src/platform/context.ts",
         "src/productSubscription/helpers.ts",
+        "src/rbac/constants.ts",
         "src/repo/DirectImportRepoAlert.tsx",
         "src/repo/FilePathBreadcrumbs.tsx",
         "src/repo/GitReference.tsx",
@@ -1212,6 +1216,8 @@ ts_project(
         "src/repo/components/RepoHeaderActions/index.ts",
         "src/repo/components/RepoRevision/RepoRevision.tsx",
         "src/repo/components/RepoRevision/index.ts",
+        "src/repo/linkifiy/Linkified.tsx",
+        "src/repo/linkifiy/get-links.ts",
         "src/repo/packages/isPackageServiceType.ts",
         "src/repo/releases/RepositoryReleasesArea.tsx",
         "src/repo/releases/RepositoryReleasesTagsPage.tsx",
@@ -1249,8 +1255,9 @@ ts_project(
         "src/search/helpers.tsx",
         "src/search/home/SearchPage.tsx",
         "src/search/index.ts",
+        "src/search/input/ExperimentalSearchInput.tsx",
+        "src/search/input/LazyExperimentalSearchInput.tsx",
         "src/search/input/SearchNavbarItem.tsx",
-        "src/search/input/lazy.ts",
         "src/search/input/suggestions.ts",
         "src/search/input/useRecentSearches.ts",
         "src/search/results/ComputeResults.tsx",
@@ -1260,6 +1267,7 @@ ts_project(
         "src/search/results/SearchResultsCacheProvider.tsx",
         "src/search/results/SearchResultsInfoBar.tsx",
         "src/search/results/StreamingSearchResults.tsx",
+        "src/search/results/UnownedResultsAlert.tsx",
         "src/search/results/components/aggregation/SearchAggregationResult.tsx",
         "src/search/results/components/aggregation/components/AggregationLimitLabel.tsx",
         "src/search/results/components/aggregation/components/aggregation-chart-card/AggregationChartCard.tsx",
@@ -1292,10 +1300,14 @@ ts_project(
         "src/settings/tokens/AccessTokenCreatedAlert.tsx",
         "src/settings/tokens/AccessTokenNode.tsx",
         "src/setup-wizard/SetupWizard.tsx",
+        "src/setup-wizard/components/CodeHostExternalServiceAlert.tsx",
         "src/setup-wizard/components/ProgressBar.tsx",
         "src/setup-wizard/components/SyncRepositoriesStep.tsx",
+        "src/setup-wizard/components/local-repositories-step/LocalRepositoriesStep.tsx",
+        "src/setup-wizard/components/local-repositories-step/helpers.ts",
+        "src/setup-wizard/components/local-repositories-step/index.ts",
+        "src/setup-wizard/components/local-repositories-step/queries.ts",
         "src/setup-wizard/components/remote-repositories-step/RemoteRepositoriesStep.tsx",
-        "src/setup-wizard/components/remote-repositories-step/components/CodeHostExternalServiceAlert.tsx",
         "src/setup-wizard/components/remote-repositories-step/components/code-host-delete-modal/CodeHostDeleteModal.tsx",
         "src/setup-wizard/components/remote-repositories-step/components/code-host-delete-modal/index.ts",
         "src/setup-wizard/components/remote-repositories-step/components/code-host-picker/CodeHostsPicker.tsx",
@@ -1317,6 +1329,7 @@ ts_project(
         "src/setup-wizard/components/setup-steps/SetupSteps.tsx",
         "src/setup-wizard/components/setup-steps/index.ts",
         "src/setup-wizard/index.ts",
+        "src/setup-wizard/queries.ts",
         "src/site-admin/AccessRequestsPage/AccessRequestsGlobalNavItem.tsx",
         "src/site-admin/AccessRequestsPage/index.tsx",
         "src/site-admin/AccessRequestsPage/queries.tsx",
@@ -1347,6 +1360,7 @@ ts_project(
         "src/site-admin/SiteAdminWebhookPage.tsx",
         "src/site-admin/SiteAdminWebhookUpdatePage.tsx",
         "src/site-admin/SiteAdminWebhooksPage.tsx",
+        "src/site-admin/SiteConfigurationChangeListPage.tsx",
         "src/site-admin/UserManagement/components/Calendar/Calendar.tsx",
         "src/site-admin/UserManagement/components/Calendar/index.ts",
         "src/site-admin/UserManagement/components/DateRangeSelect.tsx",
@@ -1402,6 +1416,19 @@ ts_project(
         "src/site-admin/outbound-webhooks/delete/DeleteButton.tsx",
         "src/site-admin/outbound-webhooks/logs/Logs.tsx",
         "src/site-admin/outbound-webhooks/logs/backend.ts",
+        "src/site-admin/packages/AddFilterModal.tsx",
+        "src/site-admin/packages/ManageFiltersModal.tsx",
+        "src/site-admin/packages/backend.ts",
+        "src/site-admin/packages/components/BehaviourSelect.tsx",
+        "src/site-admin/packages/components/FilterPackagesActions.tsx",
+        "src/site-admin/packages/components/MultiPackageForm.tsx",
+        "src/site-admin/packages/components/SinglePackageForm.tsx",
+        "src/site-admin/packages/constants.ts",
+        "src/site-admin/packages/hooks/useMatchingPackages.ts",
+        "src/site-admin/packages/hooks/useMatchingVersions.ts",
+        "src/site-admin/packages/modal-content/AddPackageFilterModalContent.tsx",
+        "src/site-admin/packages/modal-content/EditPackageFilterModalContent.tsx",
+        "src/site-admin/packages/modal-content/ManagePackageFiltersModalContent.tsx",
         "src/site-admin/permissions-center/PermissionsSyncJobNode.tsx",
         "src/site-admin/permissions-center/PermissionsSyncJobsPage.tsx",
         "src/site-admin/permissions-center/PermissionsSyncJobsTable.tsx",
@@ -1442,6 +1469,8 @@ ts_project(
         "src/storm/pages/SearchPageWrapper/index.ts",
         "src/storm/routes.tsx",
         "src/team/TeamsArea.tsx",
+        "src/team/area/EditParentTeamModal.tsx",
+        "src/team/area/RemoveParentTeamModal.tsx",
         "src/team/area/TeamArea.tsx",
         "src/team/area/TeamChildTeamsPage.tsx",
         "src/team/area/TeamHeader.tsx",
@@ -1535,6 +1564,7 @@ ts_project(
     tsconfig = ":tsconfig",
     # TODO(bazel): type-only #keep imports
     deps = [
+        ":code_intel_schema",  #keep
         ":graphql_operations",
         ":module_style_typings",
         ":node_modules/@sourcegraph/branded",
@@ -1619,6 +1649,7 @@ ts_project(
         "//:node_modules/js-yaml",
         "//:node_modules/jsonc-parser",
         "//:node_modules/linguist-languages",
+        "//:node_modules/linkifyjs",
         "//:node_modules/lodash",
         "//:node_modules/lru-cache",
         "//:node_modules/marked",
@@ -1652,6 +1683,13 @@ ts_project(
         "//:node_modules/zustand",
         "//client/shared:graphql_operations",
         "//schema:schema-json",
+    ],
+)
+
+js_library(
+    name = "code_intel_schema",
+    srcs = [
+        "src/enterprise/codeintel/configuration/schema.json",  #keep
     ],
 )
 
@@ -1689,10 +1727,7 @@ ts_project(
         "src/enterprise/code-monitoring/components/actions/EmailAction.test.tsx",
         "src/enterprise/code-monitoring/components/actions/SlackWebhookAction.test.tsx",
         "src/enterprise/code-monitoring/components/actions/WebhookAction.test.tsx",
-        "src/enterprise/codeintel/configuration/components/inference-form/auto-index-to-schema.test.ts",
-
-        # TODO(bazel): should not be here. Caused by the issue in `rules_js`.
-        "src/enterprise/codeintel/configuration/schema.json",  #keep
+        "src/enterprise/codeintel/configuration/components/inference-form/auto-index-to-schema.test.tsx",
         "src/enterprise/insights/components/creation-ui/code-insight-time-step-picker/get-interval-descrtiption-text/get-interval-description.text.test.ts",
         "src/enterprise/insights/hooks/use-parallel-requests/use-prallel-requests.test.ts",
         "src/enterprise/insights/pages/CodeInsightsRootPage.test.tsx",
@@ -1736,6 +1771,7 @@ ts_project(
         "src/repo/blob/codemirror/utils.test.ts",
         "src/repo/commit/CommitMessageWithLinks.test.tsx",
         "src/repo/commits/GitCommitNodeByline.test.tsx",
+        "src/repo/linkifiy/get-links.test.ts",
         "src/repo/releases/RepositoryReleasesTagsPage.test.tsx",
         "src/search/Notepad.test.tsx",
         "src/search/helpers.test.tsx",
@@ -1816,11 +1852,16 @@ npm_package(
 
 jest_test(
     name = "test",
+    size = "enormous",  # make sure bazel reserves enough RAM for this.
+    timeout = "moderate",
     data = [
         ":web_tests",
     ],
-    # TODO(bazel): enable when snapshots updated to support pre-compiled .js files
-    tags = ["manual"],
+    patch_node_fs = False,
+    shard_count = 6,  # this is has a large impact on the duration. We came to this number empirically.
+    tags = [
+        "no-sandbox",  # we are disabling the patch_node_fs, so the sandbox isn't really useful anymore.
+    ],
 )
 
 # webpack dev environment -------------------
@@ -1910,16 +1951,27 @@ webpack_bundle(
     deps = WEBPACK_CONFIG_DEPS,
 )
 
+# ibazel run //client/web:devserver
+# should make the web application available under http://localhost:3080/ by default.
 webpack_devserver(
     name = "devserver",
-    data = WEBPACK_CONFIG_DEPS + [
-        ":module_styles",
-        ":package_styles",
+    data = BUNDLE_DATA_DEPS + WEBPACK_CONFIG_DEPS + [
         "//:babel_config",
         "//:browserslist",
         "//:package_json",
+
+        # references from the devserver config
+        "webpack.bazel.config.js",
     ],
-    webpack_config = "webpack.bazel.config.js",
+    entry_points = {
+        "src/main.js": "app",
+    },
+    env = {
+        "NODE_ENV": "development",
+        # TODO(bazel): make it dynamic or make multiple targets.
+        "SOURCEGRAPH_API_URL": "https://sourcegraph.sourcegraph.com",
+    },
+    webpack_config = "webpack.bazel.devserver.config.js",
 )
 
 build_test(

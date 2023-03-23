@@ -1,7 +1,7 @@
 # sourcegraph/grafana - learn more about this image in https://docs.sourcegraph.com/dev/background-information/observability/grafana
 
 # Build monitoring definitions
-FROM sourcegraph/alpine-3.14:201280_2023-02-23_4.5-1071f8b97a60@sha256:c4970b21169db155c1b497740e622adb23007ac11a87ec571d9ecef8aba0adc5 AS monitoring_builder
+FROM sourcegraph/alpine-3.14:208635_2023-03-20_4.5-5e69dce80501@sha256:9e480efdf1b7fa41a4aae0d1111cffed9653aca375f0af4d466eea9a703234f8 AS monitoring_builder
 RUN mkdir -p '/generated/grafana'
 COPY ./.bin/monitoring-generator /bin/monitoring-generator
 RUN GRAFANA_DIR='/generated/grafana' PROMETHEUS_DIR='' DOCS_DIR='' NO_PRUNE=true /bin/monitoring-generator
@@ -13,7 +13,7 @@ RUN ls '/generated/grafana'
 # See https://docs.google.com/document/d/1nSmz1ChL_rBvX8FAKTB-CNzgcff083sUlIpoXEz6FHE/edit#heading=h.69clsrno4211
 # We use a Grafana base image built by Chainguard
 # TODO(@willdollman): This image was manually uploaded to our registry 2023-03-08
-FROM us.gcr.io/sourcegraph-dev/wolfi-grafana@sha256:e46d29f56d30911ee9995d81b8bfc0590586e1e7f39b4e8ed933ece19d7e4da1 as production
+FROM us.gcr.io/sourcegraph-dev/wolfi-grafana@sha256:47c8c8eaf8d2829f0c34d2e3616e96c04a3fbf6d3ea7e8a420ff910e5916a528 as production
 LABEL com.sourcegraph.grafana.version=7.5.17
 
 ARG COMMIT_SHA="unknown"

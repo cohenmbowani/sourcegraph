@@ -66,6 +66,7 @@ const authUser: AuthenticatedUser = {
     searchable: true,
     emails: [{ email: 'alice@sourcegraph.com', isPrimary: true, verified: true }],
     latestSettings: null,
+    permissions: { nodes: [] },
 }
 
 const repositories: SearchContextFields['repositories'] = [
@@ -125,7 +126,6 @@ const commonProps = () =>
         batchChangesEnabled: false,
         authenticatedUser: authUser,
         communitySearchContextMetadata: temporal,
-        globbing: false,
         fetchSearchContexts: mockFetchSearchContexts,
         getUserSearchContextNamespaces: mockGetUserSearchContextNamespaces,
         fetchSearchContextBySpec: fetchCommunitySearchContext,

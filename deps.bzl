@@ -1911,8 +1911,8 @@ def go_dependencies():
         build_file_proto_mode = "disable_global",
         importpath = "github.com/fergusstrange/embedded-postgres",
         replace = "github.com/sourcegraph/embedded-postgres",
-        sum = "h1:ZK8uyI3diAyKDlmQx6OioXa0uEwyPMkiCXBVRRlX2uc=",
-        version = "v1.19.1-0.20230222065424-1cc470c429e1",
+        sum = "h1:WBKvD5L1KCrrVsjDRlLU3kiErfMdnDiD4Qbg9URTcAo=",
+        version = "v1.19.1-0.20230313141935-8f62b6947f2c",
     )
 
     go_repository(
@@ -3287,6 +3287,14 @@ def go_dependencies():
         sum = "h1:YDjusn29QI/Das2iO9M0BHnIbxPeyuCHsjMW+lJfyTc=",
         version = "v0.5.4",
     )
+    go_repository(
+        name = "com_github_hashicorp_golang_lru_v2",
+        build_file_proto_mode = "disable_global",
+        importpath = "github.com/hashicorp/golang-lru/v2",
+        sum = "h1:Dwmkdr5Nc/oBiXgJS3CDHNhJtIHkuZ3DZF5twqnfBdU=",
+        version = "v2.0.2",
+    )
+
     go_repository(
         name = "com_github_hashicorp_hcl",
         build_file_proto_mode = "disable_global",
@@ -5328,8 +5336,8 @@ def go_dependencies():
         name = "com_github_russellhaering_gosaml2",
         build_file_proto_mode = "disable_global",
         importpath = "github.com/russellhaering/gosaml2",
-        sum = "h1:gMHBQVGFOAHd7lXC0hoYXg3BcR80+4XgTxVMwTV1aLg=",
-        version = "v0.7.0",
+        sum = "h1:CNMnH42z/GirrKjdmNrSS6bAAs47F9bPdl4PfRmVOIk=",
+        version = "v0.9.0",
     )
     go_repository(
         name = "com_github_russellhaering_goxmldsig",
@@ -5723,8 +5731,8 @@ def go_dependencies():
         name = "com_github_sourcegraph_zoekt",
         build_file_proto_mode = "disable_global",
         importpath = "github.com/sourcegraph/zoekt",
-        sum = "h1:O834DoaXIyOiQ27/qrev1Pjd79njJru1Kqjwf59ahpg=",
-        version = "v0.0.0-20230308131753-939eb52f3486",
+        sum = "h1:QFwEbH3rG9OP9EkCuAywj8U3uzFOaf0r5CSskr5s/ac=",
+        version = "v0.0.0-20230315153951-06c1bce6400a",
     )
 
     go_repository(

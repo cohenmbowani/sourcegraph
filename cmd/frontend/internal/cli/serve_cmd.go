@@ -51,7 +51,7 @@ import (
 )
 
 var (
-	printLogo = env.MustGetBool("LOGO", deploy.IsDeployTypeSingleProgram(deploy.Type()), "print Sourcegraph logo upon startup")
+	printLogo = env.MustGetBool("LOGO", deploy.IsApp(), "print Sourcegraph logo upon startup")
 
 	httpAddr = env.Get("SRC_HTTP_ADDR", func() string {
 		if env.InsecureDev {
@@ -95,7 +95,9 @@ func Main(ctx context.Context, observationCtx *observation.Context, ready servic
 	db := database.NewDB(logger, sqlDB)
 
 	if os.Getenv("SRC_DISABLE_OOBMIGRATION_VALIDATION") != "" {
-		logger.Warn("Skipping out-of-band migrations check")
+		if !deploy.IsApp() {
+			logger.Warn("Skipping out-of-band migrations check")
+		}
 	} else {
 		outOfBandMigrationRunner := oobmigration.NewRunnerWithDB(observationCtx, db, oobmigration.RefreshInterval)
 
@@ -205,7 +207,7 @@ func Main(ctx context.Context, observationCtx *observation.Context, ready servic
 	goroutine.Go(func() { adminanalytics.StartAnalyticsCacheRefresh(context.Background(), db) })
 	goroutine.Go(func() { users.StartUpdateAggregatedUsersStatisticsTable(context.Background(), db) })
 
-	if deploy.IsDeployTypeSingleProgram(deploy.Type()) {
+	if deploy.IsApp() {
 		enterpriseServices.OptionalResolver.AppResolver = graphqlbackend.NewAppResolver(logger, db)
 	}
 
@@ -249,7 +251,7 @@ func Main(ctx context.Context, observationCtx *observation.Context, ready servic
 	ready()
 
 	// We only want to run this task once Sourcegraph is ready to serve user requests.
-	goroutine.Go(func() { bg.AppReady(logger) })
+	goroutine.Go(func() { bg.AppReady(db, logger) })
 	goroutine.MonitorBackgroundRoutines(context.Background(), routines...)
 	return nil
 }

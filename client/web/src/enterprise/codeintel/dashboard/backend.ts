@@ -63,38 +63,15 @@ export const inferredAvailableIndexersFieldsFragment = gql`
     }
 `
 
-export const gitTreeCodeIntelInfoFragment = gql`
-    fragment GitTreeCodeIntelInfoFields on GitTreeCodeIntelInfo {
-        preciseSupport {
-            coverage {
-                support {
-                    ...PreciseSupportFields
-                }
-                confidence
-            }
-            limitError
-        }
-        searchBasedSupport {
-            support {
-                ...SearchBasedCodeIntelSupportFields
-            }
-        }
-    }
-`
-
-export const preciseSupportFragment = gql`
-    fragment PreciseSupportFields on PreciseCodeIntelSupport {
-        supportLevel
-        indexers {
+export const inferredAvailableIndexersWithKeysFieldsFragment = gql`
+    fragment InferredAvailableIndexersWithKeysFields on InferredAvailableIndexers {
+        indexer {
             ...CodeIntelIndexerFields
         }
-    }
-`
-
-export const searchBasedCodeIntelSupportFragment = gql`
-    fragment SearchBasedCodeIntelSupportFields on SearchBasedCodeIntelSupport {
-        language
-        supportLevel
+        rootsWithKeys {
+            root
+            comparisonKey
+        }
     }
 `
 
@@ -113,12 +90,12 @@ export const repoCodeIntelStatusSummaryFragment = gql`
             ...PreciseIndexFields
         }
         availableIndexers {
-            ...InferredAvailableIndexersFields
+            ...InferredAvailableIndexersWithKeysFields
         }
     }
 
     ${preciseIndexFieldsFragment}
-    ${inferredAvailableIndexersFieldsFragment}
+    ${inferredAvailableIndexersWithKeysFieldsFragment}
 `
 
 export const repoCodeIntelStatusQuery = gql`

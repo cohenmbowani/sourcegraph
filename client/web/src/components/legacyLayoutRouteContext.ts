@@ -23,6 +23,7 @@ const hardcodedConfig = {
     notebooksEnabled: true,
     codeMonitoringEnabled: true,
     searchAggregationEnabled: true,
+    ownEnabled: true,
 } satisfies StaticHardcodedAppConfig
 
 export const windowContextConfig = {
@@ -55,7 +56,6 @@ export const dynamicWebAppConfig = {
 } satisfies DynamicSourcegraphWebAppContext
 
 export const legacyRouteComputedContext = {
-    globbing: false,
     batchChangesExecutionEnabled: true,
     isMacPlatform: true,
 } satisfies LegacyRouteComputedContext

@@ -84,7 +84,6 @@ export const CodeMirrorMonacoFacade: React.FunctionComponent<CodeMirrorQueryInpu
     onFocus,
     onBlur,
     isSourcegraphDotCom,
-    globbing,
     onEditorCreated,
     interpretComments,
     className,
@@ -128,19 +127,11 @@ export const CodeMirrorMonacoFacade: React.FunctionComponent<CodeMirrorQueryInpu
             createDefaultSuggestions({
                 fetchSuggestions: query =>
                     fetchStreamSuggestions(appendContextFilter(query, selectedSearchContextSpec)),
-                globbing,
                 isSourcegraphDotCom,
                 navigate,
                 applyOnEnter: applySuggestionsOnEnter,
             }),
-        [
-            globbing,
-            isSourcegraphDotCom,
-            navigate,
-            applySuggestionsOnEnter,
-            fetchStreamSuggestions,
-            selectedSearchContextSpec,
-        ]
+        [isSourcegraphDotCom, navigate, applySuggestionsOnEnter, fetchStreamSuggestions, selectedSearchContextSpec]
     )
 
     const extensions = useMemo(() => {
@@ -406,18 +397,21 @@ export function useUpdateEditorFromQueryState(
             return
         }
 
+        const changes =
+            editor.state.sliceDoc() !== queryState.query
+                ? { from: 0, to: editor.state.doc.length, insert: queryState.query }
+                : undefined
         editor.dispatch({
             // Update value if it's different
-            changes:
-                editor.state.sliceDoc() !== queryState.query
-                    ? { from: 0, to: editor.state.doc.length, insert: queryState.query }
-                    : undefined,
+            changes,
             selection: queryState.selectionRange
                 ? // Select the specified range (most of the time this will be a
                   // placeholder filter value).
                   EditorSelection.range(queryState.selectionRange.start, queryState.selectionRange.end)
-                : // Place the cursor at the end of the query.
-                  EditorSelection.cursor(queryState.query.length),
+                : // Place the cursor at the end of the query if it changed.
+                changes
+                ? EditorSelection.cursor(queryState.query.length)
+                : undefined,
             scrollIntoView: true,
         })
 
@@ -427,6 +421,9 @@ export function useUpdateEditorFromQueryState(
             }
             if ((queryState.hint & EditorHint.ShowSuggestions) === EditorHint.ShowSuggestions) {
                 startCompletionRef.current(editor)
+            }
+            if ((queryState.hint & EditorHint.Blur) === EditorHint.Blur) {
+                editor.contentDOM.blur()
             }
         }
     }, [editorRef, queryState])

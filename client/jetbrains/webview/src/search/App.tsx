@@ -23,6 +23,7 @@ import { useObservable, WildcardThemeContext } from '@sourcegraph/wildcard'
 import { SearchPatternType } from '../graphql-operations'
 import { initializeSourcegraphSettings } from '../sourcegraphSettings'
 
+import { getInstanceURL } from '.'
 import { GlobalKeyboardListeners } from './GlobalKeyboardListeners'
 import { JetBrainsSearchBox } from './input/JetBrainsSearchBox'
 import { saveLastSearch } from './js-to-java-bridge'
@@ -30,14 +31,11 @@ import { SearchResultList } from './results/SearchResultList'
 import { StatusBar } from './StatusBar'
 import { Search } from './types'
 
-import { getInstanceURL } from '.'
-
 import styles from './App.module.scss'
 
 interface Props {
     isDarkTheme: boolean
     instanceURL: string
-    isGlobbingEnabled: boolean
     accessToken: string | null
     customRequestHeaders: Record<string, string> | null
     onPreviewChange: (match: SearchMatch, lineOrSymbolMatchIndex?: number) => Promise<void>
@@ -70,7 +68,6 @@ function fallbackToLiteralSearchIfNeeded(
 export const App: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     isDarkTheme,
     instanceURL,
-    isGlobbingEnabled,
     accessToken,
     customRequestHeaders,
     onPreviewChange,
@@ -277,7 +274,6 @@ export const App: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
                                 getUserSearchContextNamespaces={getUserSearchContextNamespaces}
                                 fetchStreamSuggestions={fetchStreamSuggestionsWithStaticUrl}
                                 settingsCascade={settingsCascade}
-                                globbing={isGlobbingEnabled}
                                 telemetryService={telemetryService}
                                 platformContext={platformContext}
                                 className=""

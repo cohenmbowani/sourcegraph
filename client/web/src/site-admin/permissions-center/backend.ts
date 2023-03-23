@@ -1,6 +1,13 @@
 import { gql } from '@sourcegraph/http-client'
 
 export const PERMISSIONS_SYNC_JOBS_QUERY = gql`
+    fragment CodeHostState on CodeHostState {
+        providerID
+        providerType
+        status
+        message
+    }
+
     fragment PermissionsSyncJob on PermissionsSyncJob {
         id
         state
@@ -21,6 +28,7 @@ export const PERMISSIONS_SYNC_JOBS_QUERY = gql`
                 username
                 displayName
                 email
+                avatarURL
             }
         }
         triggeredByUser {
@@ -49,7 +57,7 @@ export const PERMISSIONS_SYNC_JOBS_QUERY = gql`
         noPerms
         invalidateCaches
         codeHostStates {
-            providerID
+            ...CodeHostState
         }
     }
 

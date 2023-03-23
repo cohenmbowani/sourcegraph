@@ -219,17 +219,19 @@ export function Table<T>({
 
     return (
         <>
-            <div className="mb-4 d-flex justify-content-between">
-                {selectable && <SelectionActions<T> actions={bulkActions} position="top" selection={selection} />}
-                {pagination && (
-                    <Pagination
-                        {...pagination}
-                        onPrevious={onPreviousPage}
-                        onLimitChange={onLimitChange}
-                        onNext={onNextPage}
-                    />
-                )}
-            </div>
+            {(selectable || pagination) && (
+                <div className="mb-4 d-flex justify-content-between">
+                    {selectable && <SelectionActions<T> actions={bulkActions} position="top" selection={selection} />}
+                    {pagination && (
+                        <Pagination
+                            {...pagination}
+                            onPrevious={onPreviousPage}
+                            onLimitChange={onLimitChange}
+                            onNext={onNextPage}
+                        />
+                    )}
+                </div>
+            )}
             <table className={styles.table}>
                 <thead>
                     <tr>
@@ -383,7 +385,12 @@ function Row<T>({
                     {render ? (
                         render(data, index)
                     ) : (
-                        <div className={styles.cell}>
+                        <div
+                            className={classNames(styles.cell, {
+                                [styles.alignLeft]: !align || align === 'left',
+                                [styles.alignRight]: align === 'right',
+                            })}
+                        >
                             <Text alignment={align || 'left'} className="mb-0">
                                 {typeof accessor === 'function'
                                     ? accessor(data)
